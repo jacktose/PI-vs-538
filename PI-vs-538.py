@@ -1,14 +1,20 @@
-# PIvs538.py
-# 
-# Compares FiveThirtyEight's odds for their "states to watch" with PredictIt
-# prices for each.
-# PI prices are grabbed from their API, but 538 odds are manually entered below.
-# 538 doesn't seem to have an API, but it would be nice to find a way to scrape
-# their data.
-# 
-# Jack Enneking
-# 2016-09-08
+"""Compare FiveThirtyEight's odds for their "states to watch" with PredictIt
+prices for each.
 
+PI prices are grabbed from their API.
+538 doesn't seem to have an API, but it would be nice to find a way to scrape
+their data.
+In the meantime, 538 odds for a democratic or republican win in each state are
+manually entered in a CSV.
+The CSV format is:
+    state,dem,rep
+    AZ,33.2,66.8
+    CO,76.3,23.5
+    ...
+
+Jack Enneking
+2016-09-08
+"""
 
 import csv
 import requests
@@ -20,6 +26,7 @@ from sys import exit
 # Create the main data structure: a list of objects, each representing a state.
 
 class State:
+    """Represent a state and its election probabilities."""
     def __init__(self, abbr, name=''):
         self.abbr = abbr
         self.name = name
@@ -48,25 +55,19 @@ for abbr in sorted(stateNames):    # they'll be printed in this order, so make a
 
 
 ############  Read FiveThirtyEight data  ############
-# It would be very nice to find a way to scrape this, but for now it has to be
-# entered manually.
-# Input: fte.csv in same directory
-# Format:
-#    state,dem,rep
-#    AZ,33.2,66.8
-#    ...
 
 try:
-    with open('fte.csv', newline='') as csvFile:    # open the file with the FTE data
+    with open('fte.csv', newline='') as csvFile:
         reader = csv.DictReader(csvFile)    # gets each line as a dict
         fteChances = list(reader)    # a list of the line-dicts
-except Exception as error:    # if anything goes wrong reading the file
+except Exception as error:
     print('Could not find FiveThirtyEight data. Is there an "fte.csv" in this directory?')
-    print('\n', error)    # will probably say "No such file or directory: 'fte.csv'"
-    exit(1)    # exit unsuccessful
+    print('\n', error)
+    exit(1)
 
-for state in states:    # each state object
-    print('Read chances for ' + state.abbr + '...', end='', flush=True)    # Let the user know we're trying
+print('Read FTE chances:')
+for state in states:
+    print('  ' + state.abbr + '...', end='', flush=True)    # Let the user know we're trying
     foundIt = False
     for row in fteChances:    # each state in fte.csv
         if state.abbr == row['state']:    # e.g. "AZ"
@@ -82,12 +83,12 @@ for state in states:    # each state object
 ############  Get PredictIt data  ############
 
 tries = 5    # times to retry each request if it fails
-urlBase = 'https://www.predictit.org/api/marketdata/ticker/'    # all urlBase belongs to us
+urlBase = 'https://www.predictit.org/api/marketdata/ticker/'    # all urlBase are belong to us
 suffix = 'USPREZ16'    # markets are e.g. AZ.USPREZ16, CO.USPREZ16
 headers = {'Accept': 'application/json'}
 
 def getContentDict(url, tries=5, delay=1):
-    # gets data from the API and starts parsing it
+    """Get data from the API and start parsing it."""
     for i in range(tries):
         print('.', end='', flush=True)    # dots count tries
         r = requests.get(url, headers=headers)
@@ -96,11 +97,11 @@ def getContentDict(url, tries=5, delay=1):
         sleep(delay)    # wait before retrying
     raise    # if all tries fail
 
+print('Get PI prices:')
 for state in states:
-    print('Get prices for ' + state.abbr + '..', end='', flush=True)    # Let the user know we're trying
+    print('  ' + state.abbr + '..', end='', flush=True)    # Let the user know we're trying
     
     url = urlBase + state.abbr + '.' + suffix    # e.g. "https://www.predictit.org/api/marketdata/ticker/AZ.USPREZ16"
-    
     try:
         contracts = getContentDict(url, 5)
     except:
@@ -120,10 +121,10 @@ for state in states:
 
 ############  Printing  ############
 
-colWidths = [4,3,4,4]    # adjust table spacing here
+colWidth = [4,3,4,3]    # adjust table spacing here
 
 def addSign(n):
-# formats diffs for printing
+    """Format diffs for printing"""
     if int(n) > 0:
         s = '+' + format(n, '0.0f')
     else:
@@ -131,27 +132,34 @@ def addSign(n):
     return s
 
 header1 = ' '.join((
-    '|'.rjust(6),
-    'Democrat'.center(sum(colWidths[1:3]) + 6),
-    '|',
-    'Republican'.center(sum(colWidths[1:3]) + 6)
+    '│'.rjust(6),
+    'Democrat'.center(sum(colWidth[1:]) + 2),
+    '│',
+    'Republican'.center(sum(colWidth[1:]) + 2),
 ))
 
 header2 = ' '.join((
-    'State|'.rjust(6),
-    '538'.rjust(colWidths[1]),
-    'PI'.rjust(colWidths[2]),
-    'dif'.rjust(colWidths[3]),
-    '|',
-    '538'.rjust(colWidths[1]),
-    'PI'.rjust(colWidths[2]),
-    'dif'.rjust(colWidths[3]),
+    'State│'.rjust(6),
+    '538'.rjust(colWidth[1]),
+    'PI'.center(colWidth[2]),
+    'dif'.rjust(colWidth[3]),
+    '│',
+    '538'.rjust(colWidth[1]),
+    'PI'.center(colWidth[2]),
+    'dif'.rjust(colWidth[3]),
+))
+
+headerBar = '┼'.join((
+    '─' * (colWidth[0] + 1),
+    '─' * (sum(colWidth[1:]) + 4),
+    '─' * (sum(colWidth[1:]) + 4),
 ))
 
 print('')
 print(header1)
 print(header2)
-print('-' * len(header2))    # bar under headers
+#print('─' * len(header2))    # bar under headers
+print(headerBar)
 
 badData=[]  # will hold abbr.s of states that don't have all four values
 for state in states:
@@ -169,15 +177,15 @@ for state in states:
         repDiff = addSign(state.piRepChance - state.fteRepChance)
         
         print(
-            state.abbr.rjust(   colWidths[0]),
-            '|',
-            fteDemPercent.rjust(colWidths[1]),
-            piDemPercent.rjust(colWidths[2]),
-            demDiff.rjust(colWidths[3]),
-            '|',
-            fteRepPercent.rjust(colWidths[1]),
-            piRepPercent.rjust(colWidths[2]),
-            repDiff.rjust(colWidths[3]),
+            state.abbr.rjust(   colWidth[0]),
+            '│',
+            fteDemPercent.rjust(colWidth[1]),
+            piDemPercent.rjust(colWidth[2]),
+            demDiff.rjust(colWidth[3]),
+            '│',
+            fteRepPercent.rjust(colWidth[1]),
+            piRepPercent.rjust(colWidth[2]),
+            repDiff.rjust(colWidth[3]),
         )    # the goods!
 
 if len(badData):
