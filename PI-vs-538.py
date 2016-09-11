@@ -43,8 +43,8 @@ stateNames = {
 
 states = []    # main data structure: list of state objects
 for abbr in sorted(stateNames):    # they'll be printed in this order, so make alphabetical now
-    name = stateNames[abbr]    # the full name
-    states.append(State(abbr, name))    # create the object and add it to the list
+    name = stateNames[abbr]
+    states.append(State(abbr, name))
 
 
 ############  Read FiveThirtyEight data  ############
@@ -109,10 +109,10 @@ for state in states:
         print(' good!')
         for contract in contracts:    # contracts should be a list of the two contracts for the state
             if contract['Name'] == 'Democratic':
-                state.piDemPrice = contract['BestBuyYesCost']    # put the Y cost in the state object
+                state.piDemPrice = contract['BestBuyYesCost']
                 state.piDemChance = state.piDemPrice * 100    # prices are /1, chances /100
             elif contract['Name'] == 'Republican':
-                state.piRepPrice = contract['BestBuyYesCost']    # put the Y cost in the state object
+                state.piRepPrice = contract['BestBuyYesCost']
                 state.piRepChance = state.piRepPrice * 100    # prices are /1, chances /100
             else:
                 print('Something fishy, though.')    # not Democratic or Republican
@@ -123,7 +123,7 @@ for state in states:
 colWidths = [4,3,4,4]    # adjust table spacing here
 
 def addSign(n):
-    # formats diffs for printing
+# formats diffs for printing
     if int(n) > 0:
         s = '+' + format(n, '0.0f')
     else:
@@ -153,7 +153,7 @@ print(header1)
 print(header2)
 print('-' * len(header2))    # bar under headers
 
-badData=[]
+badData=[]  # will hold abbr.s of states that don't have all four values
 for state in states:
     try:
         state.fteDemChance, state.fteRepChance, state.piDemPrice, state.piRepPrice
