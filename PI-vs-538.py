@@ -16,32 +16,68 @@ import requests
 from time import sleep
 
 
+############  State objects  ############
+# Create the main data structure: a list of objects, each representing a state.
+
+class State:
+	def __init__(self, abbr, name):
+		self.abbr = abbr
+		self.name = name
+
+stateNames = {
+	'AZ': "Arizona",
+	'CO': "Colorado",
+	'FL': "Florida",
+	'GA': "Georgia",
+	'IA': "Iowa",
+	'MI': "Mississippi",
+	'MN': "Minnesota",
+	'NV': "Nevada",
+	'NH': "New Hampshire",
+	'NC': "North Carolina",
+	'OH': "Ohio",
+	'PA': "Pennsylvania",
+	'VA': "Virginia",
+	'WI': "Wisconsin",
+}
+
+states = []	# main data structure: list of state objects
+for abbr in sorted(stateNames):	# they'll be printed in this order, so make alphabetical now
+	name = stateNames[abbr]
+	states.append(State(abbr, name))	# create the object and tack it onto the list
+
 ############  FiveThirtyEight data  ############
 # It would be very nice to find a way to scrape this, but for now it has to be
 # entered manually.
-# Format: Democrat chance on the left, Republican on the right.
+# Format: 
 
-fteStates = {
-	'AZ': (33.2, 66.8),
-	'CO': (75.9, 23.9),
-	'FL': (61.4, 38.6),
-	'GA': (29.7, 70.2),
-	'IA': (47.5, 52.5),
-	'MI': (74.4, 25.5),
-	'MN': (79.5, 20.2),
-	'NV': (66.4, 33.5),
-	'NH': (68.0, 31.8),
-	'NC': (56.0, 43.9),
-	'OH': (55.1, 44.8),
-	'PA': (74.8, 25.2),
-	'VA': (81.7, 18.2),
-	'WI': (70.8, 29.1),
+fteChances = {
+	'AZ': {'dem': 33.2, 'rep': 66.8},
+	'CO': {'dem': 75.9, 'rep': 23.9},
+	'FL': {'dem': 61.4, 'rep': 38.6},
+	'GA': {'dem': 29.7, 'rep': 70.2},
+	'IA': {'dem': 47.5, 'rep': 52.5},
+	'MI': {'dem': 74.4, 'rep': 25.5},
+	'MN': {'dem': 79.5, 'rep': 20.2},
+	'NV': {'dem': 66.4, 'rep': 33.5},
+	'NH': {'dem': 68.0, 'rep': 31.8},
+	'NC': {'dem': 56.0, 'rep': 43.9},
+	'OH': {'dem': 55.1, 'rep': 44.8},
+	'PA': {'dem': 74.8, 'rep': 25.2},
+	'VA': {'dem': 81.7, 'rep': 18.2},
+	'WI': {'dem': 70.8, 'rep': 29.1},
 }
 
+for state in states:
+	# add the FTE chances to each state object
+	state.fteDemChance = fteChances[state.abbr]['dem']
+	state.fteRepChance = fteChances[state.abbr]['rep']
 
 ############  Get PredictIt data  ############
 
 tries = 5	# Times to retry each request if it fails.
+urlBase = "https://www.predictit.org/api/marketdata/ticker/"	# all urlBase belongs to us
+suffix = "USPREZ16"
 
 def getContentDict(url, tries=5, delay=1):
 	# gets data from the API and starts parsing it
@@ -52,29 +88,10 @@ def getContentDict(url, tries=5, delay=1):
 		sleep(delay)	# wait before retrying
 	raise	# if all tries fail
 
-urlBase = "https://www.predictit.org/api/marketdata/ticker/"	# all urlBase belongs to us
-suffix = "USPREZ16"
-piStates = {
-	'AZ': {'dem': None,'gop': None},
-	'CO': {'dem': None,'gop': None},
-	'FL': {'dem': None,'gop': None},
-	'GA': {'dem': None,'gop': None},
-	'IA': {'dem': None,'gop': None},
-	'MI': {'dem': None,'gop': None},
-	'MN': {'dem': None,'gop': None},
-	'NV': {'dem': None,'gop': None},
-	'NH': {'dem': None,'gop': None},
-	'NC': {'dem': None,'gop': None},
-	'OH': {'dem': None,'gop': None},
-	'PA': {'dem': None,'gop': None},
-	'VA': {'dem': None,'gop': None},
-	'WI': {'dem': None,'gop': None},
-}	# the main dict
-
-for state in sorted(piStates):
-	print("Get prices for " + state + "... ", end="", flush=True)	# Let the user know we're trying
+for state in states:
+	print("Get prices for " + state.abbr + "... ", end="", flush=True)	# Let the user know we're trying
 	
-	url = urlBase + state + "." + suffix	# e.g. "https://www.predictit.org/api/marketdata/ticker/AZ.USPREZ16"
+	url = urlBase + state.abbr + "." + suffix	# e.g. "https://www.predictit.org/api/marketdata/ticker/AZ.USPREZ16"
 	
 	try:
 		contracts = getContentDict(url, 5)
@@ -84,9 +101,11 @@ for state in sorted(piStates):
 		print("good!")
 		for contract in contracts:	# contracts should be a list of the two contracts for the state
 			if contract['Name'] == "Democratic":
-				piStates[state]['dem'] = contract['BestBuyYesCost']	# put the Y cost in the main dict
+				state.piDemPrice = contract['BestBuyYesCost']	# put the Y cost in the state object
+				state.piDemChance = state.piDemPrice * 100	# prices are /1, chances /100
 			elif contract['Name'] == "Republican":
-				piStates[state]['gop'] = contract['BestBuyYesCost']	# put the Y cost in the main dict
+				state.piRepPrice = contract['BestBuyYesCost']	# put the Y cost in the state object
+				state.piRepChance = state.piRepPrice * 100	# prices are /1, chances /100
 			else:
 				print("Something fishy, though.")	# not Democratic or Republican
 
@@ -127,28 +146,24 @@ print(header1)
 print(header2)
 print('-' * len(header2))	# bar under headers
 
-for state in sorted(piStates):	# sort to print alphabetically
-	fteDemNormal = fteStates[state][0] / 100	# 538's prediction normalized to 0-1 scale
-	fteDemPercent = format(fteDemNormal * 100, '0.0f') + "%"	# back up to percent scale and formatted for printing
-	piDemNormal = piStates[state]['dem']	# PI price from main dict
-	piDemPercent = format(piDemNormal * 100, '0.0f') + "\u00A2"	# formatted for printing with cent sign
-	demDiff = addSign((piDemNormal - fteDemNormal) * 100)	# maybe I should just work in percent scale to begin with
+for state in states:
+	fteDemPercent = format(state.fteDemChance, '0.0f') + "%"	# formatted for printing with percent sign
+	piDemPercent  = format(state.piDemChance , '0.0f') + "\u00A2"	# formatted for printing with cent sign
+	demDiff = addSign(state.piDemChance - state.fteDemChance)	# difference, formatted for printing with +/- sign
 	
-	fteGopNormal = fteStates[state][1] / 100
-	fteGopPercent = format(fteGopNormal * 100, '0.0f') + "%"
-	piGopNormal = piStates[state]['gop']
-	piGopPercent = format(piGopNormal * 100, '0.0f') + "\u00A2"
-	gopDiff = addSign((piGopNormal - fteGopNormal) * 100)
+	fteRepPercent = format(state.fteRepChance, '0.0f') + "%"
+	piRepPercent  = format(state.piRepChance , '0.0f') + "\u00A2"
+	repDiff = addSign(state.piRepChance - state.fteRepChance)
 	
 	print(
-		state.rjust(        colWidths[0]),
+		state.abbr.rjust(   colWidths[0]),
 		"|",
 		fteDemPercent.rjust(colWidths[1]),
 		piDemPercent.rjust( colWidths[2]),
 		demDiff.rjust(      colWidths[3]),
 		"|",
-		fteGopPercent.rjust(colWidths[1]),
-		piGopPercent.rjust( colWidths[2]),
-		gopDiff.rjust(      colWidths[3]),
+		fteRepPercent.rjust(colWidths[1]),
+		piRepPercent.rjust( colWidths[2]),
+		repDiff.rjust(      colWidths[3]),
 	)	# the goods!
 # Happy trading!
