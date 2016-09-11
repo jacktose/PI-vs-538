@@ -9,11 +9,12 @@
 # 
 # Jack Enneking
 # 2016-09-08
-# 
+
 
 import csv
 import requests
 from time import sleep
+from sys import exit
 
 
 ############  State objects  ############
@@ -46,6 +47,7 @@ for abbr in sorted(stateNames):	# they'll be printed in this order, so make alph
 	name = stateNames[abbr]	# the full name
 	states.append(State(abbr, name))	# create the object and add it to the list
 
+
 ############  Read FiveThirtyEight data  ############
 # It would be very nice to find a way to scrape this, but for now it has to be
 # entered manually.
@@ -56,39 +58,39 @@ for abbr in sorted(stateNames):	# they'll be printed in this order, so make alph
 #	...
 
 try:
-	with open('fte.csv', newline='') as csvFile:
-		reader = csv.DictReader(csvFile)
-		fteChances = list(reader)
-except Exception as error:
-	print("Could not find FiveThirtyEight data. \
-		   Is there an \"fte.csv\" in this directory?")
-	print("Error:", error)
-	raise
+	with open('fte.csv', newline='') as csvFile:	# open the file with the FTE data
+		reader = csv.DictReader(csvFile)	# gets each line as a dict
+		fteChances = list(reader)	# a list of the line-dicts
+except Exception as error:	# if anything goes wrong reading the file
+	print("Could not find FiveThirtyEight data. Is there an \"fte.csv\" in this directory?")
+	print("\n", error)	# will probably say "No such file or directory: 'fte.csv'"
+	exit(1)	# exit unsuccessful
 
 for state in states:	# each state object
-	print("Read chances for " + state.abbr + "... ", end="", flush=True)	# Let the user know we're trying
+	print("Read chances for " + state.abbr + "...", end="", flush=True)	# Let the user know we're trying
 	foundIt = False
 	for row in fteChances:	# each state in fte.csv
 		if state.abbr == row['state']:	# e.g. "AZ"
 			state.fteDemChance = float(row['dem'])	# e.g. "33.2"
 			state.fteRepChance = float(row['rep'])	# e.g. "66.8"
 			foundIt = True
-			print("good!")
+			print(" good!")
 			break
 	if not foundIt:
-		print("fail!")
+		print(" fail!")
 
 
 ############  Get PredictIt data  ############
 
 tries = 5	# Times to retry each request if it fails.
 urlBase = "https://www.predictit.org/api/marketdata/ticker/"	# all urlBase belongs to us
-suffix = "USPREZ16"
+suffix = "USPREZ16"	# markets are e.g. AZ.USPREZ16, CO.USPREZ16
 headers = {"Accept": "application/json"}
 
 def getContentDict(url, tries=5, delay=1):
 	# gets data from the API and starts parsing it
 	for i in range(tries):
+		print(".", end="", flush=True)	#	dots count tries
 		r = requests.get(url, headers=headers)
 		if r.status_code == 200 and r.content != b'null':	# PI gives a 200 for nonexistent markets, just with null contents.
 			return(r.json()['Contracts'])	# Extracts the good bits: a list of the (two) contracts.
@@ -96,16 +98,16 @@ def getContentDict(url, tries=5, delay=1):
 	raise	# if all tries fail
 
 for state in states:
-	print("Get prices for " + state.abbr + "... ", end="", flush=True)	# Let the user know we're trying
+	print("Get prices for " + state.abbr + "..", end="", flush=True)	# Let the user know we're trying
 	
 	url = urlBase + state.abbr + "." + suffix	# e.g. "https://www.predictit.org/api/marketdata/ticker/AZ.USPREZ16"
 	
 	try:
 		contracts = getContentDict(url, 5)
 	except:
-		print("fail!")
+		print(" fail!")
 	else:
-		print("good!")
+		print(" good!")
 		for contract in contracts:	# contracts should be a list of the two contracts for the state
 			if contract['Name'] == "Democratic":
 				state.piDemPrice = contract['BestBuyYesCost']	# put the Y cost in the state object
@@ -115,8 +117,6 @@ for state in states:
 				state.piRepChance = state.piRepPrice * 100	# prices are /1, chances /100
 			else:
 				print("Something fishy, though.")	# not Democratic or Republican
-
-print("")
 
 
 ############  Printing  ############
@@ -149,12 +149,12 @@ header2 = " ".join((
 	"dif".rjust(colWidths[3]),
 ))
 
+print("")
 print(header1)
 print(header2)
 print('-' * len(header2))	# bar under headers
 
 badData=[]
-
 for state in states:
 	try:
 		state.fteDemChance, state.fteRepChance, state.piDemPrice, state.piRepPrice
