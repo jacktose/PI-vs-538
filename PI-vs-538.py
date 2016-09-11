@@ -32,9 +32,9 @@ stateNames = {
 	'IA': "Iowa",
 	'MI': "Mississippi",
 	'MN': "Minnesota",
-	'NV': "Nevada",
-	'NH': "New Hampshire",
 	'NC': "North Carolina",
+	'NH': "New Hampshire",
+	'NV': "Nevada",
 	'OH': "Ohio",
 	'PA': "Pennsylvania",
 	'VA': "Virginia",
@@ -58,23 +58,25 @@ for abbr in sorted(stateNames):	# they'll be printed in this order, so make alph
 try:
 	with open('fte.csv', newline='') as csvFile:
 		reader = csv.DictReader(csvFile)
-		for state in states:	# each state object
-			print("Read chances for " + state.abbr + "... ", end="", flush=True)	# Let the user know we're trying
-			foundIt = False
-			for row in reader:	# each state in fte.csv
-				if state.abbr == row['state']:	# e.g. "AZ"
-					state.fteDemChance = float(row['dem'])	# e.g. "33.2"
-					state.fteRepChance = float(row['rep'])	# e.g. "66.8"
-					foundIt = True
-					print("good!")
-					break
-			if not foundIt:
-				print("fail!")
+		fteChances = list(reader)
 except Exception as error:
 	print("Could not find FiveThirtyEight data. \
 		   Is there an \"fte.csv\" in this directory?")
 	print("Error:", error)
 	raise
+
+for state in states:	# each state object
+	print("Read chances for " + state.abbr + "... ", end="", flush=True)	# Let the user know we're trying
+	foundIt = False
+	for row in fteChances:	# each state in fte.csv
+		if state.abbr == row['state']:	# e.g. "AZ"
+			state.fteDemChance = float(row['dem'])	# e.g. "33.2"
+			state.fteRepChance = float(row['rep'])	# e.g. "66.8"
+			foundIt = True
+			print("good!")
+			break
+	if not foundIt:
+		print("fail!")
 
 
 ############  Get PredictIt data  ############
@@ -82,11 +84,12 @@ except Exception as error:
 tries = 5	# Times to retry each request if it fails.
 urlBase = "https://www.predictit.org/api/marketdata/ticker/"	# all urlBase belongs to us
 suffix = "USPREZ16"
+headers = {"Accept": "application/json"}
 
 def getContentDict(url, tries=5, delay=1):
 	# gets data from the API and starts parsing it
 	for i in range(tries):
-		r = requests.get(url)
+		r = requests.get(url, headers=headers)
 		if r.status_code == 200 and r.content != b'null':	# PI gives a 200 for nonexistent markets, just with null contents.
 			return(r.json()['Contracts'])	# Extracts the good bits: a list of the (two) contracts.
 		sleep(delay)	# wait before retrying
