@@ -1,4 +1,5 @@
-"""Compare FiveThirtyEight's odds for their "states to watch" with PredictIt
+"""
+Compare FiveThirtyEight's odds for their "states to watch" with PredictIt
 prices for each.
 
 PI prices are grabbed from their API.
@@ -48,8 +49,10 @@ stateNames = {
     'WI': 'Wisconsin',
 }
 
-states = []    # main data structure: list of state objects
-for abbr in sorted(stateNames):    # they'll be printed in this order, so make alphabetical now
+# The main data structure, a list of state objects:
+states = []
+# Sort them into the list because they'll be printed in this order:
+for abbr in sorted(stateNames):
     name = stateNames[abbr]
     states.append(State(abbr, name))
 
@@ -58,8 +61,10 @@ for abbr in sorted(stateNames):    # they'll be printed in this order, so make a
 
 try:
     with open('fte.csv', newline='') as csvFile:
-        reader = csv.DictReader(csvFile)    # gets each line as a dict
-        fteChances = list(reader)    # a list of the line-dicts
+        # Get each line as a dict:
+        reader = csv.DictReader(csvFile)
+        # Make list of the line-dicts:
+        fteChances = list(reader)
 except Exception as error:
     print('Could not find FiveThirtyEight data. Is there an "fte.csv" in this directory?')
     print('\n', error)
@@ -67,9 +72,10 @@ except Exception as error:
 
 print('Read FTE chances:')
 for state in states:
-    print('  ' + state.abbr + '...', end='', flush=True)    # Let the user know we're trying
+    # Let the user know we're trying:
+    print('  ' + state.abbr + '...', end='', flush=True)
     foundIt = False
-    for row in fteChances:    # each state in fte.csv
+    for row in fteChances:    # each state from fte.csv
         if state.abbr == row['state']:    # e.g. "AZ"
             state.fteDemChance = float(row['dem'])    # e.g. "33.2"
             state.fteRepChance = float(row['rep'])    # e.g. "66.8"
@@ -82,7 +88,8 @@ for state in states:
 
 ############  Get PredictIt data  ############
 
-tries = 5    # times to retry each request if it fails
+# times to retry each request if it fails:
+tries = 5
 urlBase = 'https://www.predictit.org/api/marketdata/ticker/'    # all urlBase are belong to us
 suffix = 'USPREZ16'    # markets are e.g. AZ.USPREZ16, CO.USPREZ16
 headers = {'Accept': 'application/json'}
@@ -90,25 +97,30 @@ headers = {'Accept': 'application/json'}
 def getContentDict(url, tries=5, delay=1):
     """Get data from the API and start parsing it."""
     for i in range(tries):
-        print('.', end='', flush=True)    # dots count tries
+        # dots count tries:
+        print('.', end='', flush=True)
         r = requests.get(url, headers=headers)
-        if r.status_code == 200 and r.content != b'null':    # PI gives a 200 for nonexistent markets, just with null contents.
-            return(r.json()['Contracts'])    # Extracts the good bits: a list of the (two) contracts.
-        sleep(delay)    # wait before retrying
-    raise    # if all tries fail
+        # PI gives a 200 for nonexistent markets, just with null contents.:
+        if r.status_code == 200 and r.content != b'null':
+            # Extract the good bits: a list of the (two) contracts.:
+            return(r.json()['Contracts'])
+        sleep(delay)
+    raise
 
 print('Get PI prices:')
 for state in states:
-    print('  ' + state.abbr + '..', end='', flush=True)    # Let the user know we're trying
+    # Let the user know we're trying:
+    print('  ' + state.abbr + '..', end='', flush=True)
     
-    url = urlBase + state.abbr + '.' + suffix    # e.g. "https://www.predictit.org/api/marketdata/ticker/AZ.USPREZ16"
+    # Construct request URL e.g. "https://www.predictit.org/api/marketdata/ticker/AZ.USPREZ16":
+    url = urlBase + state.abbr + '.' + suffix
     try:
         contracts = getContentDict(url, 5)
     except:
         print(' fail!')
     else:
         print(' good!')
-        for contract in contracts:    # contracts should be a list of the two contracts for the state
+        for contract in contracts:    # contracts is a list of the two contracts for the state
             if contract['Name'] == 'Democratic':
                 state.piDemPrice = contract['BestBuyYesCost']
                 state.piDemChance = state.piDemPrice * 100    # prices are /1, chances /100
@@ -158,24 +170,25 @@ headerBar = '┼'.join((
 print('')
 print(header1)
 print(header2)
-#print('─' * len(header2))    # bar under headers
 print(headerBar)
 
-badData=[]  # will hold abbr.s of states that don't have all four values
+# List for abbr.s of states that don't have all four values:
+badData=[]
 for state in states:
     try:
         state.fteDemChance, state.fteRepChance, state.piDemPrice, state.piRepPrice
     except AttributeError:
         badData.append(state.abbr)
     else:
-        fteDemPercent = format(state.fteDemChance, '0.0f') + '%'    # formatted for printing with percent sign
-        piDemPercent  = format(state.piDemChance , '0.0f') + '\u00A2'    # formatted for printing with cent sign
-        demDiff = addSign(state.piDemChance - state.fteDemChance)    # difference, formatted for printing with +/- sign
+        fteDemPercent = format(state.fteDemChance, '0.0f') + '%'
+        piDemPercent  = format(state.piDemChance , '0.0f') + '\u00A2'    # cent sign
+        demDiff = addSign(state.piDemChance - state.fteDemChance)
         
         fteRepPercent = format(state.fteRepChance, '0.0f') + '%'
         piRepPercent  = format(state.piRepChance , '0.0f') + '\u00A2'
         repDiff = addSign(state.piRepChance - state.fteRepChance)
         
+        # The goods!
         print(
             state.abbr.rjust(   colWidth[0]),
             '│',
@@ -186,7 +199,7 @@ for state in states:
             fteRepPercent.rjust(colWidth[1]),
             piRepPercent.rjust(colWidth[2]),
             repDiff.rjust(colWidth[3]),
-        )    # the goods!
+        )
 
 if len(badData):
     print('\nInsufficient data:', ', '.join(badData))
