@@ -11,7 +11,7 @@
 # 2016-09-08
 # 
 
-
+import csv
 import requests
 from time import sleep
 
@@ -44,34 +44,40 @@ stateNames = {
 states = []	# main data structure: list of state objects
 for abbr in sorted(stateNames):	# they'll be printed in this order, so make alphabetical now
 	name = stateNames[abbr]
-	states.append(State(abbr, name))	# create the object and tack it onto the list
+	states[abbr] = (State(abbr, name))	# create the object and add it to the list
 
-############  FiveThirtyEight data  ############
+############  Read FiveThirtyEight data  ############
 # It would be very nice to find a way to scrape this, but for now it has to be
 # entered manually.
-# Format: 
+# Input: fte.csv in same directory
+# Format:
+#	state,dem,rep
+#	AZ,33.2,66.8
+#	...
 
-fteChances = {
-	'AZ': {'dem': 33.2, 'rep': 66.8},
-	'CO': {'dem': 75.9, 'rep': 23.9},
-	'FL': {'dem': 61.4, 'rep': 38.6},
-	'GA': {'dem': 29.7, 'rep': 70.2},
-	'IA': {'dem': 47.5, 'rep': 52.5},
-	'MI': {'dem': 74.4, 'rep': 25.5},
-	'MN': {'dem': 79.5, 'rep': 20.2},
-	'NV': {'dem': 66.4, 'rep': 33.5},
-	'NH': {'dem': 68.0, 'rep': 31.8},
-	'NC': {'dem': 56.0, 'rep': 43.9},
-	'OH': {'dem': 55.1, 'rep': 44.8},
-	'PA': {'dem': 74.8, 'rep': 25.2},
-	'VA': {'dem': 81.7, 'rep': 18.2},
-	'WI': {'dem': 70.8, 'rep': 29.1},
-}
+try:
+	with open('fte.csv', newline='') as csvFile:
+		reader = csv.DictReader(csvFile)
+		for state in states:	# each state object
+			print("Read chances for " + state.abbr + "... ", end="", flush=True)	# Let the user know we're trying
+			foundIt = False
+			for row in reader:	# each state in fte.csv
+				if state.abbr == row['state']:	# e.g. "AZ"
+					state.fteDemChance = decimal(row['dem'])	# e.g. "33.2"
+					state.fteRepChance = decimal(row['rep'])	# e.g. "66.8"
+					foundIt = True
+					print("good!")
+					break
+			if !foundIt:
+				state.fteDemChance = None
+				state.fteRepChance = None
+				print("fail!")
+except Exception as error:
+	print("Could not find FiveThirtyEight data. \
+		   Is there an \"fte.csv\" in this directory?")
+	print("Error: " + error)
+	raise
 
-for state in states:
-	# add the FTE chances to each state object
-	state.fteDemChance = fteChances[state.abbr]['dem']
-	state.fteRepChance = fteChances[state.abbr]['rep']
 
 ############  Get PredictIt data  ############
 
@@ -88,7 +94,7 @@ def getContentDict(url, tries=5, delay=1):
 		sleep(delay)	# wait before retrying
 	raise	# if all tries fail
 
-for state in states:
+for state in sorted(states):
 	print("Get prices for " + state.abbr + "... ", end="", flush=True)	# Let the user know we're trying
 	
 	url = urlBase + state.abbr + "." + suffix	# e.g. "https://www.predictit.org/api/marketdata/ticker/AZ.USPREZ16"
@@ -146,7 +152,7 @@ print(header1)
 print(header2)
 print('-' * len(header2))	# bar under headers
 
-for state in states:
+for state in sorted(states):
 	fteDemPercent = format(state.fteDemChance, '0.0f') + "%"	# formatted for printing with percent sign
 	piDemPercent  = format(state.piDemChance , '0.0f') + "\u00A2"	# formatted for printing with cent sign
 	demDiff = addSign(state.piDemChance - state.fteDemChance)	# difference, formatted for printing with +/- sign
