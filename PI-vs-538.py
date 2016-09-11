@@ -20,7 +20,7 @@ from time import sleep
 # Create the main data structure: a list of objects, each representing a state.
 
 class State:
-	def __init__(self, abbr, name):
+	def __init__(self, abbr, name=""):
 		self.abbr = abbr
 		self.name = name
 
@@ -43,8 +43,8 @@ stateNames = {
 
 states = []	# main data structure: list of state objects
 for abbr in sorted(stateNames):	# they'll be printed in this order, so make alphabetical now
-	name = stateNames[abbr]
-	states[abbr] = (State(abbr, name))	# create the object and add it to the list
+	name = stateNames[abbr]	# the full name
+	states.append(State(abbr, name))	# create the object and add it to the list
 
 ############  Read FiveThirtyEight data  ############
 # It would be very nice to find a way to scrape this, but for now it has to be
@@ -63,19 +63,17 @@ try:
 			foundIt = False
 			for row in reader:	# each state in fte.csv
 				if state.abbr == row['state']:	# e.g. "AZ"
-					state.fteDemChance = decimal(row['dem'])	# e.g. "33.2"
-					state.fteRepChance = decimal(row['rep'])	# e.g. "66.8"
+					state.fteDemChance = float(row['dem'])	# e.g. "33.2"
+					state.fteRepChance = float(row['rep'])	# e.g. "66.8"
 					foundIt = True
 					print("good!")
 					break
-			if !foundIt:
-				state.fteDemChance = None
-				state.fteRepChance = None
+			if not foundIt:
 				print("fail!")
 except Exception as error:
 	print("Could not find FiveThirtyEight data. \
 		   Is there an \"fte.csv\" in this directory?")
-	print("Error: " + error)
+	print("Error:", error)
 	raise
 
 
@@ -94,7 +92,7 @@ def getContentDict(url, tries=5, delay=1):
 		sleep(delay)	# wait before retrying
 	raise	# if all tries fail
 
-for state in sorted(states):
+for state in states:
 	print("Get prices for " + state.abbr + "... ", end="", flush=True)	# Let the user know we're trying
 	
 	url = urlBase + state.abbr + "." + suffix	# e.g. "https://www.predictit.org/api/marketdata/ticker/AZ.USPREZ16"
@@ -152,24 +150,35 @@ print(header1)
 print(header2)
 print('-' * len(header2))	# bar under headers
 
-for state in sorted(states):
-	fteDemPercent = format(state.fteDemChance, '0.0f') + "%"	# formatted for printing with percent sign
-	piDemPercent  = format(state.piDemChance , '0.0f') + "\u00A2"	# formatted for printing with cent sign
-	demDiff = addSign(state.piDemChance - state.fteDemChance)	# difference, formatted for printing with +/- sign
-	
-	fteRepPercent = format(state.fteRepChance, '0.0f') + "%"
-	piRepPercent  = format(state.piRepChance , '0.0f') + "\u00A2"
-	repDiff = addSign(state.piRepChance - state.fteRepChance)
-	
-	print(
-		state.abbr.rjust(   colWidths[0]),
-		"|",
-		fteDemPercent.rjust(colWidths[1]),
-		piDemPercent.rjust( colWidths[2]),
-		demDiff.rjust(      colWidths[3]),
-		"|",
-		fteRepPercent.rjust(colWidths[1]),
-		piRepPercent.rjust( colWidths[2]),
-		repDiff.rjust(      colWidths[3]),
-	)	# the goods!
+badData=[]
+
+for state in states:
+	try:
+		state.fteDemChance, state.fteRepChance, state.piDemPrice, state.piRepPrice
+	except AttributeError:
+		badData.append(state.abbr)
+	else:
+		fteDemPercent = format(state.fteDemChance, '0.0f') + "%"	# formatted for printing with percent sign
+		piDemPercent  = format(state.piDemChance , '0.0f') + "\u00A2"	# formatted for printing with cent sign
+		demDiff = addSign(state.piDemChance - state.fteDemChance)	# difference, formatted for printing with +/- sign
+		
+		fteRepPercent = format(state.fteRepChance, '0.0f') + "%"
+		piRepPercent  = format(state.piRepChance , '0.0f') + "\u00A2"
+		repDiff = addSign(state.piRepChance - state.fteRepChance)
+		
+		print(
+			state.abbr.rjust(   colWidths[0]),
+			"|",
+			fteDemPercent.rjust(colWidths[1]),
+			piDemPercent.rjust( colWidths[2]),
+			demDiff.rjust(      colWidths[3]),
+			"|",
+			fteRepPercent.rjust(colWidths[1]),
+			piRepPercent.rjust( colWidths[2]),
+			repDiff.rjust(      colWidths[3]),
+		)	# the goods!
+
+if len(badData):
+	print("\nInsufficient data:", ", ".join(badData))
+
 # Happy trading!
