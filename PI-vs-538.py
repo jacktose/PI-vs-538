@@ -17,10 +17,10 @@ Jack Enneking
 2016-09-08
 """
 
+import sys
+import time
 import csv
 import requests
-from time import sleep
-from sys import exit
 
 
 ############  State objects  ############
@@ -68,7 +68,7 @@ try:
 except Exception as error:
     print('Could not find FiveThirtyEight data. Is there an "fte.csv" in this directory?')
     print('\n', error)
-    exit(1)
+    sys.exit(1)
 
 print('Read FTE chances:')
 for state in states:
@@ -99,13 +99,21 @@ def getContentDict(url, tries=5, delay=1):
     for i in range(tries):
         # dots count tries:
         print('.', end='', flush=True)
-        r = requests.get(url, headers=headers)
-        # PI gives a 200 for nonexistent markets, just with null contents.:
-        if r.status_code == 200 and r.content != b'null':
-            # Extract the good bits: a list of the (two) contracts.:
-            return(r.json()['Contracts'])
-        sleep(delay)
-    raise
+        try:
+            r = requests.get(url, headers=headers)
+        except Exception as error:
+            if i >= tries - 1:   # if it's the last try
+                raise
+            else:
+                pass
+        else:
+            # PI gives a 200 for nonexistent markets, just with null contents.:
+            if r.status_code == 200 and r.content != b'null':
+                # Extract the good bits: a list of the (two) contracts.:
+                return(r.json()['Contracts'])
+        time.sleep(delay)
+    print(r.status_code)
+    raise Exception(r.status_code)
 
 print('Get PI prices:')
 for state in states:
@@ -116,7 +124,7 @@ for state in states:
     url = urlBase + state.abbr + '.' + suffix
     try:
         contracts = getContentDict(url, 5)
-    except:
+    except Exception:
         print(' fail!')
     else:
         print(' good!')
