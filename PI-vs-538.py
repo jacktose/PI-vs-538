@@ -18,6 +18,7 @@ Jack Enneking
 """
 
 import sys
+import os
 import time
 import csv
 import requests
@@ -59,15 +60,18 @@ for abbr in sorted(stateNames):
 
 ############  Read FiveThirtyEight data  ############
 
+fileName = 'fte.csv'
+filePath = sys.path[0]
+filePathName = os.path.join(filePath, fileName)
 try:
-    with open('fte.csv', newline='') as csvFile:
+    with open(filePathName, newline='') as csvFile:
         # Get each line as a dict:
         reader = csv.DictReader(csvFile)
         # Make list of the line-dicts:
         fteChances = list(reader)
 except Exception as error:
     print('Could not find FiveThirtyEight data. Is there an "fte.csv" in this directory?')
-    print('\n', error)
+    print(error)
     sys.exit(1)
 
 print('Read FTE chances:')
@@ -106,6 +110,9 @@ def getContentDict(url, tries=5, delay=1):
                 raise
             else:
                 pass
+        except KeyboardInterrupt:
+            print(' cancelled.')
+            sys.exit(1)
         else:
             # PI gives a 200 for nonexistent markets, just with null contents.:
             if r.status_code == 200 and r.content != b'null':
@@ -212,5 +219,6 @@ for state in states:
 
 if len(badData):
     print('\nInsufficient data:', ', '.join(badData))
+print()
 
 # Happy trading!
