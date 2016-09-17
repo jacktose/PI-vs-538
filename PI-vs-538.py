@@ -96,9 +96,6 @@ urlBase = 'https://projects.fivethirtyeight.com/2016-election-forecast/'    # al
 suffix = '.json'
 headers = {}
 
-def getForecasts(r):
-    return(r['forecasts']['latest'])
-
 print('Get FTE chances:')
 for state in states:
     # Let the user know we're trying:
@@ -107,13 +104,13 @@ for state in states:
     # Construct request URL e.g. "https://projects.fivethirtyeight.com/2016-election-forecast/AZ.json":
     url = urlBase + state.abbr + suffix
     try:
-        forecasts = getForecasts(scrape(url, headers, tries))
+        forecast = scrape(url, headers, tries)['forecasts']['latest']
     except Exception:
         print(' fail!')
     else:
         print(' good!')
-        state.fteDemChance = forecasts['D']['models']['polls']['winprob']
-        state.fteRepChance = forecasts['R']['models']['polls']['winprob']
+        state.fteDemChance = forecast['D']['models']['polls']['winprob']
+        state.fteRepChance = forecast['R']['models']['polls']['winprob']
 
 
 ############  Get PredictIt data  ############
