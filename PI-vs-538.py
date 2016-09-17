@@ -20,7 +20,7 @@ Jack Enneking
 import sys
 import os
 import time
-import csv
+#import csv
 import requests
 
 
@@ -36,18 +36,19 @@ class State:
 stateNames = {
     'AZ': 'Arizona',
     'CO': 'Colorado',
-    'FL': 'Florida',
-    'GA': 'Georgia',
-    'IA': 'Iowa',
-    'MI': 'Mississippi',
-    'MN': 'Minnesota',
-    'NC': 'North Carolina',
-    'NH': 'New Hampshire',
-    'NV': 'Nevada',
-    'OH': 'Ohio',
-    'PA': 'Pennsylvania',
-    'VA': 'Virginia',
-    'WI': 'Wisconsin',
+    #'FL': 'Florida',
+    #'GA': 'Georgia',
+    #'IA': 'Iowa',
+    #'MI': 'Mississippi',
+    #'MN': 'Minnesota',
+    #'NC': 'North Carolina',
+    #'NH': 'New Hampshire',
+    #'NV': 'Nevada',
+    #'OH': 'Ohio',
+    #'PA': 'Pennsylvania',
+    #'VA': 'Virginia',
+    #'WI': 'Wisconsin',
+    'WX': 'Wxsconsin',
 }
 
 # The main data structure, a list of state objects:
@@ -58,48 +59,10 @@ for abbr in sorted(stateNames):
     states.append(State(abbr, name))
 
 
-############  Read FiveThirtyEight data  ############
+############  Get JSON from API as dict  ############
 
-fileName = 'fte.csv'
-filePath = sys.path[0]
-filePathName = os.path.join(filePath, fileName)
-try:
-    with open(filePathName, newline='') as csvFile:
-        # Get each line as a dict:
-        reader = csv.DictReader(csvFile)
-        # Make list of the line-dicts:
-        fteChances = list(reader)
-except Exception as error:
-    print('Could not find FiveThirtyEight data. Is there an "fte.csv" in this directory?')
-    print(error)
-    sys.exit(1)
-
-print('Read FTE chances:')
-for state in states:
-    # Let the user know we're trying:
-    print('  ' + state.abbr + '...', end='', flush=True)
-    foundIt = False
-    for row in fteChances:    # each state from fte.csv
-        if state.abbr == row['state']:    # e.g. "AZ"
-            state.fteDemChance = float(row['dem'])    # e.g. "33.2"
-            state.fteRepChance = float(row['rep'])    # e.g. "66.8"
-            foundIt = True
-            print(' good!')
-            break
-    if not foundIt:
-        print(' fail!')
-
-
-############  Get PredictIt data  ############
-
-# times to retry each request if it fails:
-tries = 5
-urlBase = 'https://www.predictit.org/api/marketdata/ticker/'    # all urlBase are belong to us
-suffix = 'USPREZ16'    # markets are e.g. AZ.USPREZ16, CO.USPREZ16
-headers = {'Accept': 'application/json'}
-
-def getContentDict(url, tries=5, delay=1):
-    """Get data from the API and start parsing it."""
+def scrape(url, headers={}, tries=5, delay=1):
+    """Get data from an API and return it as a dict."""
     for i in range(tries):
         # dots count tries:
         print('.', end='', flush=True)
@@ -116,11 +79,54 @@ def getContentDict(url, tries=5, delay=1):
         else:
             # PI gives a 200 for nonexistent markets, just with null contents.:
             if r.status_code == 200 and r.content != b'null':
-                # Extract the good bits: a list of the (two) contracts.:
-                return(r.json()['Contracts'])
+                ## Extract the good bits: a list of the (two) contracts.:
+                #return(r.json()['Contracts'])
+                return(r.json())
         time.sleep(delay)
-    print(r.status_code)
+    #print(r.status_code)
     raise Exception(r.status_code)
+
+
+############  Get FiveThirtyEight data  ############
+
+# times to retry each request if it fails:
+#tries = 5
+tries = 1   # testing
+urlBase = 'https://projects.fivethirtyeight.com/2016-election-forecast/'    # all urlBase are belong to us
+suffix = '.json'
+headers = {}
+
+def getForecasts(r):
+    return(r['forecasts']['latest'])
+
+print('Get FTE chances:')
+for state in states:
+    # Let the user know we're trying:
+    print('  ' + state.abbr + '..', end='', flush=True)
+
+    # Construct request URL e.g. "https://projects.fivethirtyeight.com/2016-election-forecast/AZ.json":
+    url = urlBase + state.abbr + suffix
+    try:
+        forecasts = getForecasts(scrape(url, headers, tries))
+    except Exception:
+        print(' fail!')
+    else:
+        print(' good!')
+        state.fteDemChance = forecasts['D']['models']['polls']['winprob']
+        state.fteRepChance = forecasts['R']['models']['polls']['winprob']
+
+
+############  Get PredictIt data  ############
+
+# times to retry each request if it fails:
+#tries = 5
+tries = 1   # testing
+urlBase = 'https://www.predictit.org/api/marketdata/ticker/'    # all urlBase are belong to us
+suffix = 'USPREZ16'    # markets are e.g. AZ.USPREZ16, CO.USPREZ16
+headers = {'Accept': 'application/json'}
+
+def getContracts(r):
+    return(r['Contracts'])
 
 print('Get PI prices:')
 for state in states:
@@ -130,7 +136,7 @@ for state in states:
     # Construct request URL e.g. "https://www.predictit.org/api/marketdata/ticker/AZ.USPREZ16":
     url = urlBase + state.abbr + '.' + suffix
     try:
-        contracts = getContentDict(url, 5)
+        contracts = getContracts(scrape(url, headers, tries))
     except Exception:
         print(' fail!')
     else:
