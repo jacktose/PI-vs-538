@@ -122,9 +122,6 @@ urlBase = 'https://www.predictit.org/api/marketdata/ticker/'    # all urlBase ar
 suffix = 'USPREZ16'    # markets are e.g. AZ.USPREZ16, CO.USPREZ16
 headers = {'Accept': 'application/json'}
 
-def getContracts(r):
-    return(r['Contracts'])
-
 print('Get PI prices:')
 for state in states:
     # Let the user know we're trying:
@@ -133,7 +130,7 @@ for state in states:
     # Construct request URL e.g. "https://www.predictit.org/api/marketdata/ticker/AZ.USPREZ16":
     url = urlBase + state.abbr + '.' + suffix
     try:
-        contracts = getContracts(scrape(url, headers, tries))
+        contracts = scrape(url, headers, tries)['Contracts']
     except Exception:
         print(' fail!')
     else:
