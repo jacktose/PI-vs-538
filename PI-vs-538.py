@@ -3,24 +3,15 @@ Compare FiveThirtyEight's odds for their "states to watch" with PredictIt
 prices for each.
 
 PI prices are grabbed from their API.
-538 doesn't seem to have an API, but it would be nice to find a way to scrape
-their data.
-In the meantime, 538 odds for a democratic or republican win in each state are
-manually entered in a CSV.
-The CSV format is:
-    state,dem,rep
-    AZ,33.2,66.8
-    CO,76.3,23.5
-    ...
+FTE odds are from their "polls-only" forecast, grabbed from their API.
 
 Jack Enneking
-2016-09-08
+2016-09-17
 """
 
 import sys
 import os
 import time
-#import csv
 import requests
 
 
@@ -36,19 +27,18 @@ class State:
 stateNames = {
     'AZ': 'Arizona',
     'CO': 'Colorado',
-    #'FL': 'Florida',
-    #'GA': 'Georgia',
-    #'IA': 'Iowa',
-    #'MI': 'Mississippi',
-    #'MN': 'Minnesota',
-    #'NC': 'North Carolina',
-    #'NH': 'New Hampshire',
-    #'NV': 'Nevada',
-    #'OH': 'Ohio',
-    #'PA': 'Pennsylvania',
-    #'VA': 'Virginia',
-    #'WI': 'Wisconsin',
-    'WX': 'Wxsconsin',
+    'FL': 'Florida',
+    'GA': 'Georgia',
+    'IA': 'Iowa',
+    'MI': 'Mississippi',
+    'MN': 'Minnesota',
+    'NC': 'North Carolina',
+    'NH': 'New Hampshire',
+    'NV': 'Nevada',
+    'OH': 'Ohio',
+    'PA': 'Pennsylvania',
+    'VA': 'Virginia',
+    'WI': 'Wisconsin',
 }
 
 # The main data structure, a list of state objects:
@@ -59,12 +49,12 @@ for abbr in sorted(stateNames):
     states.append(State(abbr, name))
 
 
-############  Get JSON from API as dict  ############
+############  API requests  ############
 
 def scrape(url, headers={}, tries=5, delay=1):
     """Get data from an API and return it as a dict."""
     for i in range(tries):
-        # dots count tries:
+        # dots count tries for user:
         print('.', end='', flush=True)
         try:
             r = requests.get(url, headers=headers)
@@ -77,32 +67,33 @@ def scrape(url, headers={}, tries=5, delay=1):
             print(' cancelled.')
             sys.exit(1)
         else:
-            # PI gives a 200 for nonexistent markets, just with null contents.:
+            # Check for bad results
+            # FTE gives a 404 for nonexistent states.
+            # PI gives a 200 for nonexistent markets, but with null contents.
             if r.status_code == 200 and r.content != b'null':
-                ## Extract the good bits: a list of the (two) contracts.:
-                #return(r.json()['Contracts'])
+                # Return the contents as a dict:
                 return(r.json())
         time.sleep(delay)
-    #print(r.status_code)
     raise Exception(r.status_code)
 
 
 ############  Get FiveThirtyEight data  ############
 
 # times to retry each request if it fails:
-#tries = 5
-tries = 1   # testing
+tries = 5
 urlBase = 'https://projects.fivethirtyeight.com/2016-election-forecast/'    # all urlBase are belong to us
 suffix = '.json'
 headers = {}
 
-print('Get FTE chances:')
+print('Get FTE odds:')
 for state in states:
     # Let the user know we're trying:
     print('  ' + state.abbr + '..', end='', flush=True)
-
-    # Construct request URL e.g. "https://projects.fivethirtyeight.com/2016-election-forecast/AZ.json":
+    
+    # Construct request URL, e.g.
+    # "https://projects.fivethirtyeight.com/2016-election-forecast/AZ.json"
     url = urlBase + state.abbr + suffix
+    
     try:
         forecast = scrape(url, headers, tries)['forecasts']['latest']
     except Exception:
@@ -116,8 +107,7 @@ for state in states:
 ############  Get PredictIt data  ############
 
 # times to retry each request if it fails:
-#tries = 5
-tries = 1   # testing
+tries = 5
 urlBase = 'https://www.predictit.org/api/marketdata/ticker/'    # all urlBase are belong to us
 suffix = 'USPREZ16'    # markets are e.g. AZ.USPREZ16, CO.USPREZ16
 headers = {'Accept': 'application/json'}
@@ -127,23 +117,29 @@ for state in states:
     # Let the user know we're trying:
     print('  ' + state.abbr + '..', end='', flush=True)
     
-    # Construct request URL e.g. "https://www.predictit.org/api/marketdata/ticker/AZ.USPREZ16":
+    # Construct request URL, e.g.
+    # "https://www.predictit.org/api/marketdata/ticker/AZ.USPREZ16"
     url = urlBase + state.abbr + '.' + suffix
+    
     try:
         contracts = scrape(url, headers, tries)['Contracts']
     except Exception:
         print(' fail!')
     else:
         print(' good!')
-        for contract in contracts:    # contracts is a list of the two contracts for the state
+        for contract in contracts:
+        # contracts is a list of the two contracts for the state
             if contract['Name'] == 'Democratic':
                 state.piDemPrice = contract['BestBuyYesCost']
-                state.piDemChance = state.piDemPrice * 100    # prices are /1, chances /100
+                state.piDemChance = state.piDemPrice * 100
+                # prices are /1, chances /100
             elif contract['Name'] == 'Republican':
                 state.piRepPrice = contract['BestBuyYesCost']
-                state.piRepChance = state.piRepPrice * 100    # prices are /1, chances /100
+                state.piRepChance = state.piRepPrice * 100
+                # prices are /1, chances /100
             else:
-                print('Something fishy, though.')    # not Democratic or Republican
+                # not Democratic or Republican
+                print('Something fishy, though.')
 
 
 ############  Printing  ############
@@ -192,7 +188,7 @@ print(headerBar)
 badData=[]
 for state in states:
     try:
-        state.fteDemChance, state.fteRepChance, state.piDemPrice, state.piRepPrice
+        state.fteDemChance, state.fteRepChance, state.piDemChance, state.piRepChance
     except AttributeError:
         badData.append(state.abbr)
     else:
@@ -206,7 +202,7 @@ for state in states:
         
         # The goods!
         print(
-            state.abbr.rjust(   colWidth[0]),
+            state.abbr.rjust(colWidth[0]),
             '│',
             fteDemPercent.rjust(colWidth[1]),
             piDemPercent.rjust(colWidth[2]),
@@ -218,6 +214,7 @@ for state in states:
         )
 
 if len(badData):
+    # At least one state messed up
     print('\nInsufficient data:', ', '.join(badData))
 print()
 
