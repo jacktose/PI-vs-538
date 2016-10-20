@@ -1,12 +1,11 @@
 """
-Compare FiveThirtyEight's odds for their "states to watch" with PredictIt
-prices for each.
+Compare FiveThirtyEight's odds for each state with PredictIt prices for each.
 
 PI prices are grabbed from their API.
 FTE odds are from their "polls-only" forecast, grabbed from their API.
 
 Jack Enneking
-2016-09-17
+2016-10-20
 """
 
 import sys
@@ -25,20 +24,57 @@ class State:
         self.name = name
 
 stateNames = {
+    'AL': 'Alabama',
+    'AK': 'Alaska',
     'AZ': 'Arizona',
+    'AR': 'Arkansas',
+    'CA': 'California',
     'CO': 'Colorado',
+    'CT': 'Connecticut',
+    'DC': 'District of Columbia',
+    'DE': 'Delaware',
     'FL': 'Florida',
     'GA': 'Georgia',
+    'HI': 'Hawaii',
+    'ID': 'Idaho',
+    'IL': 'Illinois',
+    'IN': 'Indiana',
     'IA': 'Iowa',
-    'MI': 'Mississippi',
+    'KS': 'Kansas',
+    'KY': 'Kentucky',
+    'LA': 'Louisiana',
+    'ME': 'Maine',
+    'MD': 'Maryland',
+    'MA': 'Massachusetts',
+    'MI': 'Michigan',
     'MN': 'Minnesota',
-    'NC': 'North Carolina',
-    'NH': 'New Hampshire',
+    'MS': 'Mississippi',
+    'MO': 'Missouri',
+    'MT': 'Montana',
+    'NE': 'Nebraska',
     'NV': 'Nevada',
+    'NH': 'New Hampshire',
+    'NJ': 'New Jersey',
+    'NM': 'New Mexico',
+    'NY': 'New York',
+    'NC': 'North Carolina',
+    'ND': 'North Dakota',
     'OH': 'Ohio',
+    'OK': 'Oklahoma',
+    'OR': 'Oregon',
     'PA': 'Pennsylvania',
+    'RI': 'Rhode Island',
+    'SC': 'South Carolina',
+    'SD': 'South Dakota',
+    'TN': 'Tennessee',
+    'TX': 'Texas',
+    'UT': 'Utah',
+    'VT': 'Vermont',
     'VA': 'Virginia',
+    'WA': 'Washington',
+    'WV': 'West Virginia',
     'WI': 'Wisconsin',
+    'WY': 'Wyoming',
 }
 
 # The main data structure, a list of state objects:
@@ -145,7 +181,7 @@ for state in states:
 ############  Printing  ############
 
 # Adjust table spacing here:
-colWidth = [4,3,4,3]
+colWidth = [4,4,4,3]
 
 def addSign(n):
     """Format diffs for printing"""
