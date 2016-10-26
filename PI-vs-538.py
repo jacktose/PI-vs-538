@@ -85,6 +85,33 @@ for abbr in sorted(stateNames):
     states.append(State(abbr, name))
 
 
+############  Site objects  ############
+
+class Site:
+    """Represent a site and how to scrape it."""
+    def __init__(self, abbr=''):
+        self.abbr = abbr
+
+sites = []
+sites.append(Site(abbr = 'FTE',
+                  tries = 5,   # times to retry each request if it fails
+                  urlBase = 'https://projects.fivethirtyeight.com/2016-election-forecast/',
+                  suffix = '.json',
+                  headers = {},
+                  #drillDown = "['forecasts']['latest']",
+                  keys = ['forecasts', 'latest'],
+                  ))
+
+sites.append(Site(abbr = 'PI',
+                  tries = 5,   # times to retry each request if it fails
+                  urlBase = 'https://www.predictit.org/api/marketdata/ticker/',
+                  suffix = 'USPREZ16',    # markets are e.g. AZ.USPREZ16, CO.USPREZ16
+                  headers = {'Accept': 'application/json'},
+                  #drillDown = "['Contracts']",
+                  keys = ['Contracts'],
+                  ))
+
+
 ############  API requests  ############
 
 def scrape(url, headers={}, tries=5, delay=1):
@@ -113,13 +140,33 @@ def scrape(url, headers={}, tries=5, delay=1):
     raise Exception(r.status_code)
 
 
-############  Get FiveThirtyEight data  ############
+############  Get data  ############
 
-# times to retry each request if it fails:
-tries = 5
-urlBase = 'https://projects.fivethirtyeight.com/2016-election-forecast/'    # all urlBase are belong to us
-suffix = '.json'
-headers = {}
+for state in states:
+    # Let the user know we're trying:
+    print('  ' + state.abbr + ': ', end='', flush=True)
+    for site in sites:
+        print(site.abbr + '..', end='', flush=True)
+        
+        # Construct request URL, e.g.
+        # "https://projects.fivethirtyeight.com/2016-election-forecast/AZ.json"
+        # "https://www.predictit.org/api/marketdata/ticker/AZ.USPREZ16"
+        url = site.urlBase + state.abbr + site.suffix
+        
+        try:
+            forecast = scrape(url, headers, tries)
+            for key in keys:
+                forecast = forecast[key]
+            #forecast = eval('reply' + site.drillDown)
+        except Exception:
+            print(' fail!')
+        else:
+            print(' good!')
+            state.fteDemChance = forecast['D']['models']['polls']['winprob']
+            state.fteRepChance = forecast['R']['models']['polls']['winprob']
+
+
+############  Get FiveThirtyEight data  ############
 
 print('Get FTE odds:')
 for state in states:
@@ -141,12 +188,6 @@ for state in states:
 
 
 ############  Get PredictIt data  ############
-
-# times to retry each request if it fails:
-tries = 5
-urlBase = 'https://www.predictit.org/api/marketdata/ticker/'    # all urlBase are belong to us
-suffix = 'USPREZ16'    # markets are e.g. AZ.USPREZ16, CO.USPREZ16
-headers = {'Accept': 'application/json'}
 
 print('Get PI prices:')
 for state in states:
