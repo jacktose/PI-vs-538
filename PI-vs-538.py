@@ -23,6 +23,7 @@ class State:
         self.abbr = abbr
         self.name = name
         self.chances = {}
+        self.difs = {}
 
 stateNames = {
     'AA': 'Alaska',
@@ -184,6 +185,14 @@ def piDrill(response):
             print('  Something fishy, though.', end='')
     return(chances)
 
+def dif(chances):
+    difs = {}
+    difs['dem'] = chances['pi']['dem'] - chances['fte']['dem']
+    difs['rep'] = chances['pi']['rep'] - chances['fte']['rep']
+    difs['max'] = abs(difs[max(difs, key=abs)])
+    print(difs)
+    return(difs)
+
 
 ############  Get data  ############
 
@@ -259,6 +268,7 @@ for state in states:
     else:
         fteDemPercent = format(state.chances['fte']['dem'], '0.0f') + '%'
         piDemPercent  = format(state.chances['pi']['dem'] , '0.0f') + '\u00A2'    # cent sign
+        #demDiff = addSign(state.chances['pi']['dem'] - state.chances['fte']['dem'])
         demDiff = addSign(state.chances['pi']['dem'] - state.chances['fte']['dem'])
         
         fteRepPercent = format(state.chances['fte']['rep'], '0.0f') + '%'
@@ -284,3 +294,8 @@ if len(badData):
 print()
 
 # Happy trading!
+
+
+
+#print(states)
+#print(sorted(states, key=lambda state: max(state[
