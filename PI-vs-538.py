@@ -5,7 +5,7 @@ PI prices are grabbed from their API.
 FTE odds are from their "polls-only" forecast, grabbed from their API.
 
 Jack Enneking
-2016-10-20
+2016-10-26
 """
 
 import sys
@@ -88,6 +88,7 @@ for abbr in sorted(stateNames):
 
 
 ############  Site objects  ############
+# Create a structure representing all the sites we want to scrape from.
 
 class Site:
     """Represent a site and how to scrape it."""
@@ -98,19 +99,21 @@ class Site:
         self.headers = headers
     
 sites = []
-sites.append(Site(abbr = 'FTE',
-                  urlBase = 'https://projects.fivethirtyeight.com/2016-election-forecast/',
-                  urlSuffix = '.json',
-                  headers = {},
-                  #keys = ['forecasts', 'latest'],
-                  ))
+sites.append(Site(
+    abbr = 'FTE',
+    urlBase = 'https://projects.fivethirtyeight.com/2016-election-forecast/',
+    urlSuffix = '.json',
+    headers = {},
+    #keys = ['forecasts', 'latest'],
+))
 
-sites.append(Site(abbr = 'PI',
-                  urlBase = 'https://www.predictit.org/api/marketdata/ticker/',
-                  urlSuffix = '.USPREZ16',    # markets are e.g. AZ.USPREZ16, CO.USPREZ16
-                  headers = {'Accept': 'application/json'},
-                  #keys = ['Contracts'],
-                  ))
+sites.append(Site(
+    abbr = 'PI',
+    urlBase = 'https://www.predictit.org/api/marketdata/ticker/',
+    urlSuffix = '.USPREZ16',    # markets are e.g. AZ.USPREZ16, CO.USPREZ16
+    headers = {'Accept': 'application/json'},
+    #keys = ['Contracts'],
+))
 
 
 ############  API requests  ############
@@ -145,6 +148,9 @@ def scrape(site, state, tries=5, delay=0.1):
                 return(r.json())
         time.sleep(delay)
     raise Exception(r.status_code)
+
+
+############  Data processing  ############
 
 def drill(response, site):
     if site.abbr == 'FTE':
@@ -194,59 +200,6 @@ for state in states:
         else:
             print('good!', end='')
     print()
-
-
-#############  Get FiveThirtyEight data  ############
-#
-#print('Get FTE odds:')
-#for state in states:
-#    # Let the user know we're trying:
-#    print('  ' + state.abbr + '..', end='', flush=True)
-#    
-#    # Construct request URL, e.g.
-#    # "https://projects.fivethirtyeight.com/2016-election-forecast/AZ.json"
-#    url = urlBase + state.abbr + suffix
-#    
-#    try:
-#        forecast = scrape(url, headers, tries)['forecasts']['latest']
-#    except Exception:
-#        print(' fail!')
-#    else:
-#        print(' good!')
-#        state.fteDemChance = forecast['D']['models']['polls']['winprob']
-#        state.fteRepChance = forecast['R']['models']['polls']['winprob']
-#
-#
-#############  Get PredictIt data  ############
-#
-#print('Get PI prices:')
-#for state in states:
-#    # Let the user know we're trying:
-#    print('  ' + state.abbr + '..', end='', flush=True)
-#    
-#    # Construct request URL, e.g.
-#    # "https://www.predictit.org/api/marketdata/ticker/AZ.USPREZ16"
-#    url = urlBase + state.abbr + '.' + suffix
-#    
-#    try:
-#        contracts = scrape(url, headers, tries)['Contracts']
-#    except Exception:
-#        print(' fail!')
-#    else:
-#        print(' good!')
-#        for contract in contracts:
-#        # contracts is a list of the two contracts for the state
-#            if contract['Name'] == 'Democratic':
-#                state.piDemPrice = contract['BestBuyYesCost']
-#                state.piDemChance = state.piDemPrice * 100
-#                # prices are /1, chances /100
-#            elif contract['Name'] == 'Republican':
-#                state.piRepPrice = contract['BestBuyYesCost']
-#                state.piRepChance = state.piRepPrice * 100
-#                # prices are /1, chances /100
-#            else:
-#                # not Democratic or Republican
-#                print('Something fishy, though.')
 
 
 ############  Printing  ############
