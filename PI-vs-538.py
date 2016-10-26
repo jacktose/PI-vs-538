@@ -153,6 +153,7 @@ def scrape(site, state, tries=5, delay=0.1):
 ############  Data processing  ############
 
 def drill(response, site):
+    """Extract D and R chances from response dict. from either site."""
     if site.abbr == 'FTE':
         return(fteDrill(response))
     elif site.abbr == 'PI':
