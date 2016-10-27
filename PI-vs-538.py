@@ -12,7 +12,6 @@ import sys
 import os
 import time
 import requests
-import warnings
 
 
 ############  State objects  ############
@@ -179,7 +178,6 @@ def piDrill(response):
     contracts = response['Contracts']
     for contract in contracts:
     # contracts is a list of the two contracts for the state
-        #print(contract)
         if contract['Name'] == 'Democratic':
             chances['dem'] = contract['BestBuyYesCost'] * 100   # prices are /1, chances /100
         elif contract['Name'] == 'Republican':
@@ -275,12 +273,10 @@ for state in states:
     else:
         fteDemPercent = format(state.chances['fte']['dem'], '0.0f') + '%'
         piDemPercent  = format(state.chances['pi']['dem'] , '0.0f') + '\u00A2'    # cent sign
-        #demDiff = addSign(state.chances['pi']['dem'] - state.chances['fte']['dem'])
         demDiff = addSign(state.difs['dem'])
         
         fteRepPercent = format(state.chances['fte']['rep'], '0.0f') + '%'
         piRepPercent  = format(state.chances['pi']['rep'] , '0.0f') + '\u00A2'
-        #repDiff = addSign(state.chances['pi']['rep'] - state.chances['fte']['rep'])
         repDiff = addSign(state.difs['rep'])
         
         # The goods!
