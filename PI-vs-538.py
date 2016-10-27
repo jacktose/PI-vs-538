@@ -5,7 +5,7 @@ PI prices are grabbed from their API.
 FTE odds are from their "polls-only" forecast, grabbed from their API.
 
 Jack Enneking
-2016-10-26
+2016-10-27
 """
 
 import sys
@@ -23,9 +23,15 @@ class State:
         self.abbr = abbr
         self.name = name
         self.chances = {}
+    
+    def calcDifs(self):
+        """Calculate the differences between predictions for this state."""
+        self.difs = {}
+        self.difs['dem'] = self.chances['pi']['dem'] - self.chances['fte']['dem']
+        self.difs['rep'] = self.chances['pi']['rep'] - self.chances['fte']['rep']
+        self.difs['max'] = abs(max(self.difs.values(), key=lambda d: abs(d)))
 
 stateNames = {
-    'AA': 'Alaska',
     'AK': 'Alaska',
     'AL': 'Alabama',
     'AR': 'Arkansas',
@@ -104,7 +110,6 @@ sites.append(Site(
     urlBase = 'https://projects.fivethirtyeight.com/2016-election-forecast/',
     urlSuffix = '.json',
     headers = {},
-    #keys = ['forecasts', 'latest'],
 ))
 
 sites.append(Site(
@@ -112,7 +117,6 @@ sites.append(Site(
     urlBase = 'https://www.predictit.org/api/marketdata/ticker/',
     urlSuffix = '.USPREZ16',    # markets are e.g. AZ.USPREZ16, CO.USPREZ16
     headers = {'Accept': 'application/json'},
-    #keys = ['Contracts'],
 ))
 
 
@@ -174,14 +178,15 @@ def piDrill(response):
     contracts = response['Contracts']
     for contract in contracts:
     # contracts is a list of the two contracts for the state
-        #print(contract)
         if contract['Name'] == 'Democratic':
             chances['dem'] = contract['BestBuyYesCost'] * 100   # prices are /1, chances /100
         elif contract['Name'] == 'Republican':
             chances['rep'] = contract['BestBuyYesCost'] * 100   # prices are /1, chances /100
         else:
             # not Democratic or Republican
-            print('  Something fishy, though.', end='')
+            print('mostly ', end='')
+            #raise OtherParty(contract['Name'])
+    
     return(chances)
 
 
@@ -198,9 +203,16 @@ for state in states:
             state.chances[site.abbr.lower()] = drill(response, site)
         except Exception:
             print('fail!', end='')
+        #except OtherParty:
+        #    print('good enough!', end='')
         else:
             print('good!', end='')
+
+    state.calcDifs()
     print()
+
+# Order states by difference, i.e. investment opportunity:
+states.sort(key=lambda state: state.difs['max'], reverse=True)
 
 
 ############  Printing  ############
@@ -209,8 +221,10 @@ for state in states:
 colWidth = [4,4,4,3]
 
 def addSign(n):
-    """Format diffs for printing"""
-    if int(n) > 0:
+    """Format diffs for printing."""
+    if round(n) == 0:
+        s = '0'
+    elif round(n) > 0:
         s = '+' + format(n, '0.0f')
     else:
         s = format(n, '0.0f')
@@ -259,11 +273,11 @@ for state in states:
     else:
         fteDemPercent = format(state.chances['fte']['dem'], '0.0f') + '%'
         piDemPercent  = format(state.chances['pi']['dem'] , '0.0f') + '\u00A2'    # cent sign
-        demDiff = addSign(state.chances['pi']['dem'] - state.chances['fte']['dem'])
+        demDiff = addSign(state.difs['dem'])
         
         fteRepPercent = format(state.chances['fte']['rep'], '0.0f') + '%'
         piRepPercent  = format(state.chances['pi']['rep'] , '0.0f') + '\u00A2'
-        repDiff = addSign(state.chances['pi']['rep'] - state.chances['fte']['rep'])
+        repDiff = addSign(state.difs['rep'])
         
         # The goods!
         print(
