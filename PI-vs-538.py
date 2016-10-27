@@ -5,13 +5,14 @@ PI prices are grabbed from their API.
 FTE odds are from their "polls-only" forecast, grabbed from their API.
 
 Jack Enneking
-2016-10-26
+2016-10-27
 """
 
 import sys
 import os
 import time
 import requests
+import warnings
 
 
 ############  State objects  ############
@@ -23,61 +24,66 @@ class State:
         self.abbr = abbr
         self.name = name
         self.chances = {}
+    
+    def calcDifs(self):
+        """Calculate the differences between predictions for this state."""
         self.difs = {}
+        self.difs['dem'] = self.chances['pi']['dem'] - self.chances['fte']['dem']
+        self.difs['rep'] = self.chances['pi']['rep'] - self.chances['fte']['rep']
+        self.difs['max'] = abs(max(self.difs.values(), key=lambda d: abs(d)))
 
 stateNames = {
-    #'AA': 'Alaska',
     'AK': 'Alaska',
-    #'AL': 'Alabama',
-    #'AR': 'Arkansas',
-    #'AZ': 'Arizona',
-    #'CA': 'California',
-    #'CO': 'Colorado',
-    #'CT': 'Connecticut',
-    #'DC': 'District of Columbia',
-    #'DE': 'Delaware',
-    #'FL': 'Florida',
-    #'GA': 'Georgia',
-    #'HI': 'Hawaii',
-    #'IA': 'Iowa',
-    #'ID': 'Idaho',
-    #'IL': 'Illinois',
-    #'IN': 'Indiana',
-    #'KS': 'Kansas',
-    #'KY': 'Kentucky',
-    #'LA': 'Louisiana',
-    #'MA': 'Massachusetts',
-    #'MD': 'Maryland',
-    #'ME': 'Maine',
-    #'MI': 'Michigan',
-    #'MN': 'Minnesota',
-    #'MO': 'Missouri',
-    #'MS': 'Mississippi',
-    #'MT': 'Montana',
-    #'NC': 'North Carolina',
-    #'ND': 'North Dakota',
-    #'NE': 'Nebraska',
-    #'NH': 'New Hampshire',
-    #'NJ': 'New Jersey',
-    #'NM': 'New Mexico',
-    #'NV': 'Nevada',
-    #'NY': 'New York',
-    #'OH': 'Ohio',
-    #'OK': 'Oklahoma',
-    #'OR': 'Oregon',
-    #'PA': 'Pennsylvania',
-    #'RI': 'Rhode Island',
-    #'SC': 'South Carolina',
-    #'SD': 'South Dakota',
-    #'TN': 'Tennessee',
-    #'TX': 'Texas',
-    #'UT': 'Utah',
-    #'VA': 'Virginia',
-    #'VT': 'Vermont',
-    #'WA': 'Washington',
-    #'WI': 'Wisconsin',
-    #'WV': 'West Virginia',
-    #'WY': 'Wyoming',
+    'AL': 'Alabama',
+    'AR': 'Arkansas',
+    'AZ': 'Arizona',
+    'CA': 'California',
+    'CO': 'Colorado',
+    'CT': 'Connecticut',
+    'DC': 'District of Columbia',
+    'DE': 'Delaware',
+    'FL': 'Florida',
+    'GA': 'Georgia',
+    'HI': 'Hawaii',
+    'IA': 'Iowa',
+    'ID': 'Idaho',
+    'IL': 'Illinois',
+    'IN': 'Indiana',
+    'KS': 'Kansas',
+    'KY': 'Kentucky',
+    'LA': 'Louisiana',
+    'MA': 'Massachusetts',
+    'MD': 'Maryland',
+    'ME': 'Maine',
+    'MI': 'Michigan',
+    'MN': 'Minnesota',
+    'MO': 'Missouri',
+    'MS': 'Mississippi',
+    'MT': 'Montana',
+    'NC': 'North Carolina',
+    'ND': 'North Dakota',
+    'NE': 'Nebraska',
+    'NH': 'New Hampshire',
+    'NJ': 'New Jersey',
+    'NM': 'New Mexico',
+    'NV': 'Nevada',
+    'NY': 'New York',
+    'OH': 'Ohio',
+    'OK': 'Oklahoma',
+    'OR': 'Oregon',
+    'PA': 'Pennsylvania',
+    'RI': 'Rhode Island',
+    'SC': 'South Carolina',
+    'SD': 'South Dakota',
+    'TN': 'Tennessee',
+    'TX': 'Texas',
+    'UT': 'Utah',
+    'VA': 'Virginia',
+    'VT': 'Vermont',
+    'WA': 'Washington',
+    'WI': 'Wisconsin',
+    'WV': 'West Virginia',
+    'WY': 'Wyoming',
 }
 
 # The main data structure, a list of state objects:
@@ -105,7 +111,6 @@ sites.append(Site(
     urlBase = 'https://projects.fivethirtyeight.com/2016-election-forecast/',
     urlSuffix = '.json',
     headers = {},
-    #keys = ['forecasts', 'latest'],
 ))
 
 sites.append(Site(
@@ -113,7 +118,6 @@ sites.append(Site(
     urlBase = 'https://www.predictit.org/api/marketdata/ticker/',
     urlSuffix = '.USPREZ16',    # markets are e.g. AZ.USPREZ16, CO.USPREZ16
     headers = {'Accept': 'application/json'},
-    #keys = ['Contracts'],
 ))
 
 
@@ -182,15 +186,10 @@ def piDrill(response):
             chances['rep'] = contract['BestBuyYesCost'] * 100   # prices are /1, chances /100
         else:
             # not Democratic or Republican
-            print('  Something fishy, though.', end='')
+            print('mostly ', end='')
+            #raise OtherParty(contract['Name'])
+    
     return(chances)
-
-def dif(chances):
-    difs = {}
-    difs['dem'] = chances['pi']['dem'] - chances['fte']['dem']
-    difs['rep'] = chances['pi']['rep'] - chances['fte']['rep']
-    difs['max'] = abs(max(difs.values(), key=lambda i: abs(i)))
-    return(difs)
 
 
 ############  Get data  ############
@@ -206,11 +205,16 @@ for state in states:
             state.chances[site.abbr.lower()] = drill(response, site)
         except Exception:
             print('fail!', end='')
+        #except OtherParty:
+        #    print('good enough!', end='')
         else:
             print('good!', end='')
 
-    state.difs = dif(state.chances)
+    state.calcDifs()
     print()
+
+# Order states by difference, i.e. investment opportunity:
+states.sort(key=lambda state: state.difs['max'], reverse=True)
 
 
 ############  Printing  ############
@@ -219,8 +223,10 @@ for state in states:
 colWidth = [4,4,4,3]
 
 def addSign(n):
-    """Format diffs for printing"""
-    if int(n) > 0:
+    """Format diffs for printing."""
+    if round(n) == 0:
+        s = '0'
+    elif round(n) > 0:
         s = '+' + format(n, '0.0f')
     else:
         s = format(n, '0.0f')
@@ -296,8 +302,3 @@ if len(badData):
 print()
 
 # Happy trading!
-
-
-
-#print(states)
-#print(sorted(states, key=lambda state: max(state[
