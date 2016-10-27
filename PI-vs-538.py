@@ -26,58 +26,58 @@ class State:
         self.difs = {}
 
 stateNames = {
-    'AA': 'Alaska',
+    #'AA': 'Alaska',
     'AK': 'Alaska',
-    'AL': 'Alabama',
-    'AR': 'Arkansas',
-    'AZ': 'Arizona',
-    'CA': 'California',
-    'CO': 'Colorado',
-    'CT': 'Connecticut',
-    'DC': 'District of Columbia',
-    'DE': 'Delaware',
-    'FL': 'Florida',
-    'GA': 'Georgia',
-    'HI': 'Hawaii',
-    'IA': 'Iowa',
-    'ID': 'Idaho',
-    'IL': 'Illinois',
-    'IN': 'Indiana',
-    'KS': 'Kansas',
-    'KY': 'Kentucky',
-    'LA': 'Louisiana',
-    'MA': 'Massachusetts',
-    'MD': 'Maryland',
-    'ME': 'Maine',
-    'MI': 'Michigan',
-    'MN': 'Minnesota',
-    'MO': 'Missouri',
-    'MS': 'Mississippi',
-    'MT': 'Montana',
-    'NC': 'North Carolina',
-    'ND': 'North Dakota',
-    'NE': 'Nebraska',
-    'NH': 'New Hampshire',
-    'NJ': 'New Jersey',
-    'NM': 'New Mexico',
-    'NV': 'Nevada',
-    'NY': 'New York',
-    'OH': 'Ohio',
-    'OK': 'Oklahoma',
-    'OR': 'Oregon',
-    'PA': 'Pennsylvania',
-    'RI': 'Rhode Island',
-    'SC': 'South Carolina',
-    'SD': 'South Dakota',
-    'TN': 'Tennessee',
-    'TX': 'Texas',
-    'UT': 'Utah',
-    'VA': 'Virginia',
-    'VT': 'Vermont',
-    'WA': 'Washington',
-    'WI': 'Wisconsin',
-    'WV': 'West Virginia',
-    'WY': 'Wyoming',
+    #'AL': 'Alabama',
+    #'AR': 'Arkansas',
+    #'AZ': 'Arizona',
+    #'CA': 'California',
+    #'CO': 'Colorado',
+    #'CT': 'Connecticut',
+    #'DC': 'District of Columbia',
+    #'DE': 'Delaware',
+    #'FL': 'Florida',
+    #'GA': 'Georgia',
+    #'HI': 'Hawaii',
+    #'IA': 'Iowa',
+    #'ID': 'Idaho',
+    #'IL': 'Illinois',
+    #'IN': 'Indiana',
+    #'KS': 'Kansas',
+    #'KY': 'Kentucky',
+    #'LA': 'Louisiana',
+    #'MA': 'Massachusetts',
+    #'MD': 'Maryland',
+    #'ME': 'Maine',
+    #'MI': 'Michigan',
+    #'MN': 'Minnesota',
+    #'MO': 'Missouri',
+    #'MS': 'Mississippi',
+    #'MT': 'Montana',
+    #'NC': 'North Carolina',
+    #'ND': 'North Dakota',
+    #'NE': 'Nebraska',
+    #'NH': 'New Hampshire',
+    #'NJ': 'New Jersey',
+    #'NM': 'New Mexico',
+    #'NV': 'Nevada',
+    #'NY': 'New York',
+    #'OH': 'Ohio',
+    #'OK': 'Oklahoma',
+    #'OR': 'Oregon',
+    #'PA': 'Pennsylvania',
+    #'RI': 'Rhode Island',
+    #'SC': 'South Carolina',
+    #'SD': 'South Dakota',
+    #'TN': 'Tennessee',
+    #'TX': 'Texas',
+    #'UT': 'Utah',
+    #'VA': 'Virginia',
+    #'VT': 'Vermont',
+    #'WA': 'Washington',
+    #'WI': 'Wisconsin',
+    #'WV': 'West Virginia',
+    #'WY': 'Wyoming',
 }
 
 # The main data structure, a list of state objects:
@@ -189,8 +189,7 @@ def dif(chances):
     difs = {}
     difs['dem'] = chances['pi']['dem'] - chances['fte']['dem']
     difs['rep'] = chances['pi']['rep'] - chances['fte']['rep']
-    difs['max'] = abs(difs[max(difs, key=abs)])
-    print(difs)
+    difs['max'] = abs(max(difs.values(), key=lambda i: abs(i)))
     return(difs)
 
 
@@ -209,6 +208,8 @@ for state in states:
             print('fail!', end='')
         else:
             print('good!', end='')
+
+    state.difs = dif(state.chances)
     print()
 
 
@@ -269,11 +270,12 @@ for state in states:
         fteDemPercent = format(state.chances['fte']['dem'], '0.0f') + '%'
         piDemPercent  = format(state.chances['pi']['dem'] , '0.0f') + '\u00A2'    # cent sign
         #demDiff = addSign(state.chances['pi']['dem'] - state.chances['fte']['dem'])
-        demDiff = addSign(state.chances['pi']['dem'] - state.chances['fte']['dem'])
+        demDiff = addSign(state.difs['dem'])
         
         fteRepPercent = format(state.chances['fte']['rep'], '0.0f') + '%'
         piRepPercent  = format(state.chances['pi']['rep'] , '0.0f') + '\u00A2'
-        repDiff = addSign(state.chances['pi']['rep'] - state.chances['fte']['rep'])
+        #repDiff = addSign(state.chances['pi']['rep'] - state.chances['fte']['rep'])
+        repDiff = addSign(state.difs['rep'])
         
         # The goods!
         print(
