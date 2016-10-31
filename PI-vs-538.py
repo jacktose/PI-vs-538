@@ -23,6 +23,7 @@ class State:
         self.abbr = abbr
         self.name = name
         self.chances = {}
+        self.difs = {}
     
     def calcDifs(self):
         """Calculate the differences between predictions for this state."""
@@ -33,56 +34,56 @@ class State:
 
 stateNames = {
     'AK': 'Alaska',
-    'KL': 'Alabama',
-    #'AR': 'Arkansas',
-    #'AZ': 'Arizona',
-    #'CA': 'California',
-    #'CO': 'Colorado',
-    #'CT': 'Connecticut',
-    #'DC': 'District of Columbia',
-    #'DE': 'Delaware',
-    #'FL': 'Florida',
-    #'GA': 'Georgia',
-    #'HI': 'Hawaii',
-    #'IA': 'Iowa',
-    #'ID': 'Idaho',
-    #'IL': 'Illinois',
-    #'IN': 'Indiana',
-    #'KS': 'Kansas',
-    #'KY': 'Kentucky',
-    #'LA': 'Louisiana',
-    #'MA': 'Massachusetts',
-    #'MD': 'Maryland',
-    #'ME': 'Maine',
-    #'MI': 'Michigan',
-    #'MN': 'Minnesota',
-    #'MO': 'Missouri',
-    #'MS': 'Mississippi',
-    #'MT': 'Montana',
-    #'NC': 'North Carolina',
-    #'ND': 'North Dakota',
-    #'NE': 'Nebraska',
-    #'NH': 'New Hampshire',
-    #'NJ': 'New Jersey',
-    #'NM': 'New Mexico',
-    #'NV': 'Nevada',
-    #'NY': 'New York',
-    #'OH': 'Ohio',
-    #'OK': 'Oklahoma',
-    #'OR': 'Oregon',
-    #'PA': 'Pennsylvania',
-    #'RI': 'Rhode Island',
-    #'SC': 'South Carolina',
-    #'SD': 'South Dakota',
-    #'TN': 'Tennessee',
-    #'TX': 'Texas',
-    #'UT': 'Utah',
-    #'VA': 'Virginia',
-    #'VT': 'Vermont',
-    #'WA': 'Washington',
-    #'WI': 'Wisconsin',
-    #'WV': 'West Virginia',
-    #'WY': 'Wyoming',
+    'AL': 'Alabama',
+    'AR': 'Arkansas',
+    'AZ': 'Arizona',
+    'CA': 'California',
+    'CO': 'Colorado',
+    'CT': 'Connecticut',
+    'DC': 'District of Columbia',
+    'DE': 'Delaware',
+    'FL': 'Florida',
+    'GA': 'Georgia',
+    'HI': 'Hawaii',
+    'IA': 'Iowa',
+    'ID': 'Idaho',
+    'IL': 'Illinois',
+    'IN': 'Indiana',
+    'KS': 'Kansas',
+    'KY': 'Kentucky',
+    'LA': 'Louisiana',
+    'MA': 'Massachusetts',
+    'MD': 'Maryland',
+    'ME': 'Maine',
+    'MI': 'Michigan',
+    'MN': 'Minnesota',
+    'MO': 'Missouri',
+    'MS': 'Mississippi',
+    'MT': 'Montana',
+    'NC': 'North Carolina',
+    'ND': 'North Dakota',
+    'NE': 'Nebraska',
+    'NH': 'New Hampshire',
+    'NJ': 'New Jersey',
+    'NM': 'New Mexico',
+    'NV': 'Nevada',
+    'NY': 'New York',
+    'OH': 'Ohio',
+    'OK': 'Oklahoma',
+    'OR': 'Oregon',
+    'PA': 'Pennsylvania',
+    'RI': 'Rhode Island',
+    'SC': 'South Carolina',
+    'SD': 'South Dakota',
+    'TN': 'Tennessee',
+    'TX': 'Texas',
+    'UT': 'Utah',
+    'VA': 'Virginia',
+    'VT': 'Vermont',
+    'WA': 'Washington',
+    'WI': 'Wisconsin',
+    'WV': 'West Virginia',
+    'WY': 'Wyoming',
 }
 
 # The main data structure, a list of state objects:
@@ -194,20 +195,28 @@ sites.append(Site(
 for state in states:
     # Let the user know we're trying:
     print(' ' + state.abbr + ':', end='', flush=True)
-
+    state.badData = False
+    
     for site in sites:
         print('  ' + site.abbr + '..', end='', flush=True)
         try:
             response = site.scrape(state)
             state.chances[site.abbr.lower()] = site.drill(response)
         except Exception:
+            state.badData = True
             print('fail!', end='')
         #except OtherParty:
         #    print('good enough!', end='')
         else:
             print('good!', end='')
-
-    state.calcDifs()
+    
+    if state.badData is True:
+        # If we don't have sufficient data, fake value:
+        state.difs['max'] = -1
+    else:
+        state.calcDifs()
+    
+    # Finish the line for the state:
     print()
 
 # Order states by difference, i.e. investment opportunity:
@@ -258,17 +267,19 @@ print(header1)
 print(header2)
 print(headerBar)
 
+        
 # List for abbr.s of states that don't have all four values:
-badData=[]
+badStates=[]
 for state in states:
     try:
+        assert state.badData == False
         #state.fteDemChance, state.fteRepChance, state.piDemChance, state.piRepChance
         state.chances['fte']['dem']
         state.chances['fte']['rep']
         state.chances['pi']['dem']
         state.chances['pi']['rep']
-    except AttributeError:
-        badData.append(state.abbr)
+    except (AssertionError, AttributeError):
+        badStates.append(state.abbr)
     else:
         fteDemPercent = format(state.chances['fte']['dem'], '0.0f') + '%'
         piDemPercent  = format(state.chances['pi']['dem'] , '0.0f') + '\u00A2'    # cent sign
@@ -291,9 +302,9 @@ for state in states:
             repDiff.rjust(colWidth[3]),
         )
 
-if len(badData):
+if len(badStates):
     # At least one state messed up
-    print('\nInsufficient data:', ', '.join(badData))
+    print('\nInsufficient data:', ', '.join(badStates))
 print()
 
 # Happy trading!
