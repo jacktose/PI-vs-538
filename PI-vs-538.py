@@ -33,56 +33,56 @@ class State:
 
 stateNames = {
     'AK': 'Alaska',
-    'AL': 'Alabama',
-    'AR': 'Arkansas',
-    'AZ': 'Arizona',
-    'CA': 'California',
-    'CO': 'Colorado',
-    'CT': 'Connecticut',
-    'DC': 'District of Columbia',
-    'DE': 'Delaware',
-    'FL': 'Florida',
-    'GA': 'Georgia',
-    'HI': 'Hawaii',
-    'IA': 'Iowa',
-    'ID': 'Idaho',
-    'IL': 'Illinois',
-    'IN': 'Indiana',
-    'KS': 'Kansas',
-    'KY': 'Kentucky',
-    'LA': 'Louisiana',
-    'MA': 'Massachusetts',
-    'MD': 'Maryland',
-    'ME': 'Maine',
-    'MI': 'Michigan',
-    'MN': 'Minnesota',
-    'MO': 'Missouri',
-    'MS': 'Mississippi',
-    'MT': 'Montana',
-    'NC': 'North Carolina',
-    'ND': 'North Dakota',
-    'NE': 'Nebraska',
-    'NH': 'New Hampshire',
-    'NJ': 'New Jersey',
-    'NM': 'New Mexico',
-    'NV': 'Nevada',
-    'NY': 'New York',
-    'OH': 'Ohio',
-    'OK': 'Oklahoma',
-    'OR': 'Oregon',
-    'PA': 'Pennsylvania',
-    'RI': 'Rhode Island',
-    'SC': 'South Carolina',
-    'SD': 'South Dakota',
-    'TN': 'Tennessee',
-    'TX': 'Texas',
-    'UT': 'Utah',
-    'VA': 'Virginia',
-    'VT': 'Vermont',
-    'WA': 'Washington',
-    'WI': 'Wisconsin',
-    'WV': 'West Virginia',
-    'WY': 'Wyoming',
+    'KL': 'Alabama',
+    #'AR': 'Arkansas',
+    #'AZ': 'Arizona',
+    #'CA': 'California',
+    #'CO': 'Colorado',
+    #'CT': 'Connecticut',
+    #'DC': 'District of Columbia',
+    #'DE': 'Delaware',
+    #'FL': 'Florida',
+    #'GA': 'Georgia',
+    #'HI': 'Hawaii',
+    #'IA': 'Iowa',
+    #'ID': 'Idaho',
+    #'IL': 'Illinois',
+    #'IN': 'Indiana',
+    #'KS': 'Kansas',
+    #'KY': 'Kentucky',
+    #'LA': 'Louisiana',
+    #'MA': 'Massachusetts',
+    #'MD': 'Maryland',
+    #'ME': 'Maine',
+    #'MI': 'Michigan',
+    #'MN': 'Minnesota',
+    #'MO': 'Missouri',
+    #'MS': 'Mississippi',
+    #'MT': 'Montana',
+    #'NC': 'North Carolina',
+    #'ND': 'North Dakota',
+    #'NE': 'Nebraska',
+    #'NH': 'New Hampshire',
+    #'NJ': 'New Jersey',
+    #'NM': 'New Mexico',
+    #'NV': 'Nevada',
+    #'NY': 'New York',
+    #'OH': 'Ohio',
+    #'OK': 'Oklahoma',
+    #'OR': 'Oregon',
+    #'PA': 'Pennsylvania',
+    #'RI': 'Rhode Island',
+    #'SC': 'South Carolina',
+    #'SD': 'South Dakota',
+    #'TN': 'Tennessee',
+    #'TX': 'Texas',
+    #'UT': 'Utah',
+    #'VA': 'Virginia',
+    #'VT': 'Vermont',
+    #'WA': 'Washington',
+    #'WI': 'Wisconsin',
+    #'WV': 'West Virginia',
+    #'WY': 'Wyoming',
 }
 
 # The main data structure, a list of state objects:
@@ -103,7 +103,74 @@ class Site:
         self.urlBase = urlBase
         self.urlSuffix = urlSuffix
         self.headers = headers
+
+    ############  API requests  ############
+    def scrape(self, state, tries=5, delay=0.1):
+        """Get data from an API and return it as a dict."""
+
+        # Construct request URL, e.g.
+        # "https://projects.fivethirtyeight.com/2016-election-forecast/AZ.json"
+        # "https://www.predictit.org/api/marketdata/ticker/AZ.USPREZ16"
+        url = self.urlBase + state.abbr + self.urlSuffix
+
+        for i in range(tries):
+            # dots count tries for user:
+            print('.', end='', flush=True)
+            try:
+                r = requests.get(url, headers=self.headers)
+            except Exception as error:
+                if i >= tries - 1:   # if it's the last try
+                    raise
+                else:
+                    pass
+            except KeyboardInterrupt:
+                print(' cancelled.')
+                sys.exit(1)
+            else:
+                # Check for bad results
+                # FTE gives a 404 for nonexistent states.
+                # PI gives a 200 for nonexistent markets, but with null contents.
+                if r.status_code == 200 and r.content != b'null':
+                    # Return the contents as a dict:
+                    return(r.json())
+            time.sleep(delay)
+        raise Exception(r.status_code)
     
+    ############  Data processing  ############
+    
+    def drill(self, response):
+        """Extract D and R chances from response dict. from either site."""
+        if self.abbr == 'FTE':
+            return(self.fteDrill(response))
+        elif self.abbr == 'PI':
+            return(self.piDrill(response))
+        else:
+            raise Exception(self)
+    
+    def fteDrill(self, response):
+        """Extract D and R chances from FTE response dict."""
+        chances = {}
+        chances['dem'] = response['forecasts']['latest']['D']['models']['polls']['winprob']
+        chances['rep'] = response['forecasts']['latest']['R']['models']['polls']['winprob']
+        return(chances)
+    
+    def piDrill(self, response):
+        """Extract D and R chances from PI response dict."""
+        chances = {}
+        contracts = response['Contracts']
+        for contract in contracts:
+        # contracts is a list of the two contracts for the state
+            if contract['Name'] == 'Democratic':
+                chances['dem'] = contract['BestBuyYesCost'] * 100   # prices are /1, chances /100
+            elif contract['Name'] == 'Republican':
+                chances['rep'] = contract['BestBuyYesCost'] * 100   # prices are /1, chances /100
+            else:
+                # not Democratic or Republican
+                print('mostly ', end='')
+                #raise OtherParty(contract['Name'])
+        return(chances)
+
+
 sites = []
 sites.append(Site(
     abbr = 'FTE',
@@ -120,74 +187,6 @@ sites.append(Site(
 ))
 
 
-############  API requests  ############
-
-def scrape(site, state, tries=5, delay=0.1):
-    """Get data from an API and return it as a dict."""
-
-    # Construct request URL, e.g.
-    # "https://projects.fivethirtyeight.com/2016-election-forecast/AZ.json"
-    # "https://www.predictit.org/api/marketdata/ticker/AZ.USPREZ16"
-    url = site.urlBase + state.abbr + site.urlSuffix
-
-    for i in range(tries):
-        # dots count tries for user:
-        print('.', end='', flush=True)
-        try:
-            r = requests.get(url, headers=site.headers)
-        except Exception as error:
-            if i >= tries - 1:   # if it's the last try
-                raise
-            else:
-                pass
-        except KeyboardInterrupt:
-            print(' cancelled.')
-            sys.exit(1)
-        else:
-            # Check for bad results
-            # FTE gives a 404 for nonexistent states.
-            # PI gives a 200 for nonexistent markets, but with null contents.
-            if r.status_code == 200 and r.content != b'null':
-                # Return the contents as a dict:
-                return(r.json())
-        time.sleep(delay)
-    raise Exception(r.status_code)
-
-
-############  Data processing  ############
-
-def drill(response, site):
-    """Extract D and R chances from response dict. from either site."""
-    if site.abbr == 'FTE':
-        return(fteDrill(response))
-    elif site.abbr == 'PI':
-        return(piDrill(response))
-    else:
-        raise Exception(site)
-
-def fteDrill(response):
-    """Extract D and R chances from FTE response dict."""
-    chances = {}
-    chances['dem'] = response['forecasts']['latest']['D']['models']['polls']['winprob']
-    chances['rep'] = response['forecasts']['latest']['R']['models']['polls']['winprob']
-    return(chances)
-
-def piDrill(response):
-    """Extract D and R chances from PI response dict."""
-    chances = {}
-    contracts = response['Contracts']
-    for contract in contracts:
-    # contracts is a list of the two contracts for the state
-        if contract['Name'] == 'Democratic':
-            chances['dem'] = contract['BestBuyYesCost'] * 100   # prices are /1, chances /100
-        elif contract['Name'] == 'Republican':
-            chances['rep'] = contract['BestBuyYesCost'] * 100   # prices are /1, chances /100
-        else:
-            # not Democratic or Republican
-            print('mostly ', end='')
-            #raise OtherParty(contract['Name'])
-    
-    return(chances)
 
 
 ############  Get data  ############
@@ -199,8 +198,8 @@ for state in states:
     for site in sites:
         print('  ' + site.abbr + '..', end='', flush=True)
         try:
-            response = scrape(site, state)
-            state.chances[site.abbr.lower()] = drill(response, site)
+            response = site.scrape(state)
+            state.chances[site.abbr.lower()] = site.drill(response)
         except Exception:
             print('fail!', end='')
         #except OtherParty:
