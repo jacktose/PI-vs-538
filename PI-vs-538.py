@@ -168,7 +168,6 @@ class Site:
             else:
                 # not Democratic or Republican
                 print('mostly ', end='')
-                #raise OtherParty(contract['Name'])
         return(chances)
 
 
@@ -205,8 +204,6 @@ for state in states:
         except Exception:
             state.badData = True
             print('fail!', end='')
-        #except OtherParty:
-        #    print('good enough!', end='')
         else:
             print('good!', end='')
     
