@@ -5,11 +5,10 @@ PI prices are grabbed from their API.
 FTE odds are from their "polls-only" forecast, grabbed from their API.
 
 Jack Enneking
-2016-10-27
+2016-10-31
 """
 
 import sys
-import os
 import time
 import requests
 
@@ -106,6 +105,7 @@ class Site:
         self.headers = headers
 
     ############  API requests  ############
+
     def scrape(self, state, tries=5, delay=0.1):
         """Get data from an API and return it as a dict."""
 
@@ -172,7 +172,9 @@ class Site:
         return(chances)
 
 
+# Create sites:
 sites = []
+
 sites.append(Site(
     abbr = 'FTE',
     urlBase = 'https://projects.fivethirtyeight.com/2016-election-forecast/',
@@ -186,8 +188,6 @@ sites.append(Site(
     urlSuffix = '.USPREZ16',    # markets are e.g. AZ.USPREZ16, CO.USPREZ16
     headers = {'Accept': 'application/json'},
 ))
-
-
 
 
 ############  Get data  ############
@@ -223,7 +223,7 @@ for state in states:
 states.sort(key=lambda state: state.difs['max'], reverse=True)
 
 
-############  Printing  ############
+############  Print  ############
 
 # Adjust table spacing here:
 colWidth = [4,4,4,3]
@@ -273,7 +273,6 @@ badStates=[]
 for state in states:
     try:
         assert state.badData == False
-        #state.fteDemChance, state.fteRepChance, state.piDemChance, state.piRepChance
         state.chances['fte']['dem']
         state.chances['fte']['rep']
         state.chances['pi']['dem']
@@ -305,6 +304,7 @@ for state in states:
 if len(badStates):
     # At least one state messed up
     print('\nInsufficient data:', ', '.join(badStates))
+
 print()
 
 # Happy trading!
