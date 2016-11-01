@@ -17,7 +17,7 @@ import requests
 ############  Parse options  ############
 
 def usage():
-    print('usage: PI-vs-538.py [-a|d] [-v] [AK AL ...]')
+    print('usage: PI-vs-538.py [-a|d] [-b] [-v] [AK AL ...]')
 
 def deDupe(dupes):
     """Removes duplicates from a list."""
@@ -26,12 +26,13 @@ def deDupe(dupes):
     return(clean)
 
 try:
-    opts, args = getopt.getopt(sys.argv[1:], 'ahdv', ['alphabetical', 'help', 'difference', 'verbose'])
+    opts, args = getopt.getopt(sys.argv[1:], 'abhdv', ['alphabetical', 'best', 'help', 'difference', 'verbose'])
 except getopt.GetoptError:
     usage()
     sys.exit(2)
 
 sort = 'diff'
+best = False
 verbose = False
 args = [a.upper() for a in args]
 args = deDupe(args)
@@ -44,6 +45,8 @@ for opt, arg in opts:
         sort = 'alpha'
     elif opt in ('-d', '--difference'):
         sort = 'diff'
+    elif opt in ('-b', '--best'):
+        best = True
     elif opt in ('-v', '--verbose'):
         verbose = True
 
@@ -279,15 +282,20 @@ if not verbose:
     # Still need a blank line before table
     print()
 
+# Order states by difference, i.e. investment opportunity:
+states.sort(key=lambda state: state.difs['max'], reverse=True)
+if best:
+    states = states[:10]
+
 if sort == 'alpha':
-    # Order states alphabetically (by abbreviation)
+    # Order states alphabetically (by abbreviation):
     states.sort(key=lambda state: state.abbr)
-elif sort == 'diff':
-    # Order states by difference, i.e. investment opportunity:
-    states.sort(key=lambda state: state.difs['max'], reverse=True)
-else:
-    # Default to diff
-    states.sort(key=lambda state: state.difs['max'], reverse=True)
+#elif sort == 'diff':
+#    # Order states by difference, i.e. investment opportunity:
+#    states.sort(key=lambda state: state.difs['max'], reverse=True)
+#else:
+#    # Default to diff
+#    states.sort(key=lambda state: state.difs['max'], reverse=True)
 
 
 ############  Print  ############
