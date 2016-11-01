@@ -1,3 +1,5 @@
+#!/usr/bin/env python3
+
 """
 Compare FiveThirtyEight's odds for each state with PredictIt prices for each.
 
@@ -333,7 +335,15 @@ def printResults(states):
 
     print()
 
+
+############  Get and handle data  ############
+
 def getData(states, sites):
+    """Scrape and parse."""
+
+    if verbose:
+        print()
+
     for state in states:
         if verbose:
             # Let the user know we're trying:
@@ -367,24 +377,26 @@ def getData(states, sites):
             # Finish the line for the state:
             print()
 
+    if not verbose:
+        # Still need a blank line before table
+        print()
+
 def sortStates(states):
     """Arrange list for printing."""
     # Order states by difference, i.e. investment opportunity:
     states.sort(key=lambda state: state.difs['max'], reverse=True)
+
     if best:
         states = states[:10]
 
     if sort == 'alpha':
         # Order states alphabetically (by abbreviation):
         states.sort(key=lambda state: state.abbr)
-    #elif sort == 'diff':
-    #    # Order states by difference, i.e. investment opportunity:
-    #    states.sort(key=lambda state: state.difs['max'], reverse=True)
-    #else:
-    #    # Default to diff
-    #    states.sort(key=lambda state: state.difs['max'], reverse=True)
 
     return(states)
+
+
+############  Main event!  ############
 
 def main():
     """Main program flow."""
@@ -393,15 +405,8 @@ def main():
     states = makeStates()
     sites = makeSites()
 
-    if verbose:
-        print()
-
     # Scrape from APIs:
     getData(states, sites)
-
-    if not verbose:
-        # Still need a blank line before table
-        print()
 
     states = sortStates(states)
 
