@@ -9,8 +9,43 @@ Jack Enneking
 """
 
 import sys
+import getopt
 import time
 import requests
+
+
+############  Parse options  ############
+
+def usage():
+    print('usage: PI-vs-538.py [-a|d] [-v] [AK AL ...]')
+
+def deDupe(dupes):
+    """Removes duplicates from a list."""
+    clean = []
+    [clean.append(i) for i in dupes if i not in clean]
+    return(clean)
+
+try:
+    opts, args = getopt.getopt(sys.argv[1:], 'ahdv', ['alphabetical', 'help', 'difference', 'verbose'])
+except getopt.GetoptError:
+    usage()
+    sys.exit(2)
+
+sort = 'diff'
+verbose = False
+args = [a.upper() for a in args]
+args = deDupe(args)
+
+for opt, arg in opts:
+    if opt in ('-h', '--help'):
+        usage()
+        sys.exit()
+    elif opt in ('-a', '--alphabetical'):
+        sort = 'alpha'
+    elif opt in ('-d', '--difference'):
+        sort = 'diff'
+    elif opt in ('-v', '--verbose'):
+        verbose = True
 
 
 ############  State objects  ############
@@ -87,11 +122,23 @@ stateNames = {
 
 # The main data structure, a list of state objects:
 states = []
-# Sort them into the list because they'll be printed in this order:
-for abbr in sorted(stateNames):
-    name = stateNames[abbr]
-    states.append(State(abbr, name))
+# Take user's states if given:
+if len(args):
+    for abbr in args:
+        try:
+            name = stateNames[abbr]
+        except Exception:
+            print('Invalid state: ' + abbr)
+            continue
+        states.append(State(abbr, name))
+else:
+    for abbr in stateNames:
+        name = stateNames[abbr]
+        states.append(State(abbr, name))
 
+if verbose:
+    # For alphabetical printing while scraping
+    states.sort(key=lambda state: state.abbr)
 
 ############  Site objects  ############
 # Create a structure representing all the sites we want to scrape from.
@@ -167,7 +214,8 @@ class Site:
                 chances['rep'] = contract['BestBuyYesCost'] * 100   # prices are /1, chances /100
             else:
                 # not Democratic or Republican
-                print('mostly ', end='')
+                if verbose:
+                    print('mostly ', end='')
         return(chances)
 
 
@@ -191,33 +239,55 @@ sites.append(Site(
 
 ############  Get data  ############
 
+if verbose:
+    print()
+
 for state in states:
-    # Let the user know we're trying:
-    print(' ' + state.abbr + ':', end='', flush=True)
+    if verbose:
+        # Let the user know we're trying:
+        print(' ' + state.abbr + ':', end='', flush=True)
     state.badData = False
     
     for site in sites:
-        print('  ' + site.abbr + '..', end='', flush=True)
+        if verbose:
+            print('  ' + site.abbr + '..', end='', flush=True)
         try:
             response = site.scrape(state)
             state.chances[site.abbr.lower()] = site.drill(response)
         except Exception:
             state.badData = True
-            print('fail!', end='')
+            if verbose:
+                print('fail!', end='')
         else:
-            print('good!', end='')
+            if verbose:
+                print('good!', end='')
     
     if state.badData is True:
-        # If we don't have sufficient data, fake value:
+        # If we don't have sufficient data, set fake value:
         state.difs['max'] = -1
     else:
-        state.calcDifs()
+        try:
+            state.calcDifs()
+        except Exception:
+            raise
     
-    # Finish the line for the state:
+    if verbose:
+        # Finish the line for the state:
+        print()
+
+if not verbose:
+    # Still need a blank line before table
     print()
 
-# Order states by difference, i.e. investment opportunity:
-states.sort(key=lambda state: state.difs['max'], reverse=True)
+if sort == 'alpha':
+    # Order states alphabetically (by abbreviation)
+    states.sort(key=lambda state: state.abbr)
+elif sort == 'diff':
+    # Order states by difference, i.e. investment opportunity:
+    states.sort(key=lambda state: state.difs['max'], reverse=True)
+else:
+    # Default to diff
+    states.sort(key=lambda state: state.difs['max'], reverse=True)
 
 
 ############  Print  ############
@@ -259,7 +329,7 @@ headerBar = '┼'.join((
     '─' * (sum(colWidth[1:]) + 4),
 ))
 
-print('')
+print()
 print(header1)
 print(header2)
 print(headerBar)
