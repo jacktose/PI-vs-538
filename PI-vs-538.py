@@ -31,6 +31,7 @@ except getopt.GetoptError:
     usage()
     sys.exit(2)
 
+#options = {
 sort = 'diff'
 best = False
 verbose = False
@@ -50,24 +51,8 @@ for opt, arg in opts:
     elif opt in ('-v', '--verbose'):
         verbose = True
 
-
-############  State objects  ############
-# Create the main data structure: a list of objects, each representing a state.
-
-class State:
-    """Represent a state and its election probabilities."""
-    def __init__(self, abbr, name=''):
-        self.abbr = abbr
-        self.name = name
-        self.chances = {}
-        self.difs = {}
-    
-    def calcDifs(self):
-        """Calculate the differences between predictions for this state."""
-        self.difs = {}
-        self.difs['dem'] = self.chances['pi']['dem'] - self.chances['fte']['dem']
-        self.difs['rep'] = self.chances['pi']['rep'] - self.chances['fte']['rep']
-        self.difs['max'] = abs(max(self.difs.values(), key=lambda d: abs(d)))
+# Adjust table spacing here:
+colWidth = [4,4,4,3]
 
 stateNames = {
     'AK': 'Alaska',
@@ -123,25 +108,47 @@ stateNames = {
     'WY': 'Wyoming',
 }
 
-# The main data structure, a list of state objects:
-states = []
-# Take user's states if given:
-if len(args):
-    for abbr in args:
-        try:
-            name = stateNames[abbr]
-        except Exception:
-            print('Invalid state: ' + abbr)
-            continue
-        states.append(State(abbr, name))
-else:
-    for abbr in stateNames:
-        name = stateNames[abbr]
-        states.append(State(abbr, name))
 
-if verbose:
-    # For alphabetical printing while scraping
-    states.sort(key=lambda state: state.abbr)
+############  State objects  ############
+# Create the main data structure: a list of objects, each representing a state.
+
+class State:
+    """Represent a state and its election probabilities."""
+    def __init__(self, abbr, name=''):
+        self.abbr = abbr
+        self.name = name
+        self.chances = {}
+        self.difs = {}
+    
+    def calcDifs(self):
+        """Calculate the differences between predictions for this state."""
+        self.difs = {}
+        self.difs['dem'] = self.chances['pi']['dem'] - self.chances['fte']['dem']
+        self.difs['rep'] = self.chances['pi']['rep'] - self.chances['fte']['rep']
+        self.difs['max'] = abs(max(self.difs.values(), key=lambda d: abs(d)))
+
+def makeStates():
+    """Create the main data structure, a list of state objects."""
+    states = []
+    # Take user's states if given:
+    if len(args):
+        for abbr in args:
+            try:
+                name = stateNames[abbr]
+            except Exception:
+                print('Invalid state: ' + abbr)
+                continue
+            states.append(State(abbr, name))
+    else:
+        for abbr in stateNames:
+            name = stateNames[abbr]
+            states.append(State(abbr, name))
+
+    if verbose:
+        # For alphabetical printing while scraping
+        states.sort(key=lambda state: state.abbr)
+    
+    return(states)
 
 ############  Site objects  ############
 # Create a structure representing all the sites we want to scrape from.
@@ -221,87 +228,28 @@ class Site:
                     print('mostly ', end='')
         return(chances)
 
+def makeSites():
+    """Create a list of site objects."""
+    sites = []
 
-# Create sites:
-sites = []
+    sites.append(Site(
+        abbr = 'FTE',
+        urlBase = 'https://projects.fivethirtyeight.com/2016-election-forecast/',
+        urlSuffix = '.json',
+        headers = {},
+    ))
 
-sites.append(Site(
-    abbr = 'FTE',
-    urlBase = 'https://projects.fivethirtyeight.com/2016-election-forecast/',
-    urlSuffix = '.json',
-    headers = {},
-))
+    sites.append(Site(
+        abbr = 'PI',
+        urlBase = 'https://www.predictit.org/api/marketdata/ticker/',
+        urlSuffix = '.USPREZ16',    # markets are e.g. AZ.USPREZ16, CO.USPREZ16
+        headers = {'Accept': 'application/json'},
+    ))
 
-sites.append(Site(
-    abbr = 'PI',
-    urlBase = 'https://www.predictit.org/api/marketdata/ticker/',
-    urlSuffix = '.USPREZ16',    # markets are e.g. AZ.USPREZ16, CO.USPREZ16
-    headers = {'Accept': 'application/json'},
-))
-
-
-############  Get data  ############
-
-if verbose:
-    print()
-
-for state in states:
-    if verbose:
-        # Let the user know we're trying:
-        print(' ' + state.abbr + ':', end='', flush=True)
-    state.badData = False
-    
-    for site in sites:
-        if verbose:
-            print('  ' + site.abbr + '..', end='', flush=True)
-        try:
-            response = site.scrape(state)
-            state.chances[site.abbr.lower()] = site.drill(response)
-        except Exception:
-            state.badData = True
-            if verbose:
-                print('fail!', end='')
-        else:
-            if verbose:
-                print('good!', end='')
-    
-    if state.badData is True:
-        # If we don't have sufficient data, set fake value:
-        state.difs['max'] = -1
-    else:
-        try:
-            state.calcDifs()
-        except Exception:
-            raise
-    
-    if verbose:
-        # Finish the line for the state:
-        print()
-
-if not verbose:
-    # Still need a blank line before table
-    print()
-
-# Order states by difference, i.e. investment opportunity:
-states.sort(key=lambda state: state.difs['max'], reverse=True)
-if best:
-    states = states[:10]
-
-if sort == 'alpha':
-    # Order states alphabetically (by abbreviation):
-    states.sort(key=lambda state: state.abbr)
-#elif sort == 'diff':
-#    # Order states by difference, i.e. investment opportunity:
-#    states.sort(key=lambda state: state.difs['max'], reverse=True)
-#else:
-#    # Default to diff
-#    states.sort(key=lambda state: state.difs['max'], reverse=True)
+    return(sites)
 
 
-############  Print  ############
-
-# Adjust table spacing here:
-colWidth = [4,4,4,3]
+############  Printing  ############
 
 def addSign(n):
     """Format diffs for printing."""
@@ -313,73 +261,153 @@ def addSign(n):
         s = format(n, '0.0f')
     return s
 
-header1 = ' '.join((
-    '│'.rjust(6),
-    'Democrat'.center(sum(colWidth[1:]) + 2),
-    '│',
-    'Republican'.center(sum(colWidth[1:]) + 2),
-))
+def printHeader():
+    """Print the header rows for the output table."""
+    header1 = ' '.join((
+        '│'.rjust(6),
+        'Democrat'.center(sum(colWidth[1:]) + 2),
+        '│',
+        'Republican'.center(sum(colWidth[1:]) + 2),
+    ))
 
-header2 = ' '.join((
-    'State│'.rjust(6),
-    '538'.rjust(colWidth[1]),
-    'PI'.center(colWidth[2]),
-    'dif'.rjust(colWidth[3]),
-    '│',
-    '538'.rjust(colWidth[1]),
-    'PI'.center(colWidth[2]),
-    'dif'.rjust(colWidth[3]),
-))
+    header2 = ' '.join((
+        'State│'.rjust(6),
+        '538'.rjust(colWidth[1]),
+        'PI'.center(colWidth[2]),
+        'dif'.rjust(colWidth[3]),
+        '│',
+        '538'.rjust(colWidth[1]),
+        'PI'.center(colWidth[2]),
+        'dif'.rjust(colWidth[3]),
+    ))
 
-headerBar = '┼'.join((
-    '─' * (colWidth[0] + 1),
-    '─' * (sum(colWidth[1:]) + 4),
-    '─' * (sum(colWidth[1:]) + 4),
-))
+    headerBar = '┼'.join((
+        '─' * (colWidth[0] + 1),
+        '─' * (sum(colWidth[1:]) + 4),
+        '─' * (sum(colWidth[1:]) + 4),
+    ))
 
-print()
-print(header1)
-print(header2)
-print(headerBar)
+    print()
+    print(header1)
+    print(header2)
+    print(headerBar)
 
         
-# List for abbr.s of states that don't have all four values:
-badStates=[]
-for state in states:
-    try:
-        assert state.badData == False
-        state.chances['fte']['dem']
-        state.chances['fte']['rep']
-        state.chances['pi']['dem']
-        state.chances['pi']['rep']
-    except (AssertionError, AttributeError):
-        badStates.append(state.abbr)
-    else:
-        fteDemPercent = format(state.chances['fte']['dem'], '0.0f') + '%'
-        piDemPercent  = format(state.chances['pi']['dem'] , '0.0f') + '\u00A2'    # cent sign
-        demDiff = addSign(state.difs['dem'])
-        
-        fteRepPercent = format(state.chances['fte']['rep'], '0.0f') + '%'
-        piRepPercent  = format(state.chances['pi']['rep'] , '0.0f') + '\u00A2'
-        repDiff = addSign(state.difs['rep'])
-        
-        # The goods!
-        print(
-            state.abbr.rjust(colWidth[0]),
-            '│',
-            fteDemPercent.rjust(colWidth[1]),
-            piDemPercent.rjust(colWidth[2]),
-            demDiff.rjust(colWidth[3]),
-            '│',
-            fteRepPercent.rjust(colWidth[1]),
-            piRepPercent.rjust(colWidth[2]),
-            repDiff.rjust(colWidth[3]),
-        )
+def printResults(states):
+    # List for abbr.s of states that don't have all four values:
+    badStates=[]
+    for state in states:
+        try:
+            assert state.badData == False
+            state.chances['fte']['dem']
+            state.chances['fte']['rep']
+            state.chances['pi']['dem']
+            state.chances['pi']['rep']
+        except (AssertionError, AttributeError):
+            badStates.append(state.abbr)
+        else:
+            fteDemPercent = format(state.chances['fte']['dem'], '0.0f') + '%'
+            piDemPercent  = format(state.chances['pi']['dem'] , '0.0f') + '\u00A2'    # cent sign
+            demDiff = addSign(state.difs['dem'])
+            
+            fteRepPercent = format(state.chances['fte']['rep'], '0.0f') + '%'
+            piRepPercent  = format(state.chances['pi']['rep'] , '0.0f') + '\u00A2'
+            repDiff = addSign(state.difs['rep'])
+            
+            # The goods!
+            print(
+                state.abbr.rjust(colWidth[0]),
+                '│',
+                fteDemPercent.rjust(colWidth[1]),
+                piDemPercent.rjust(colWidth[2]),
+                demDiff.rjust(colWidth[3]),
+                '│',
+                fteRepPercent.rjust(colWidth[1]),
+                piRepPercent.rjust(colWidth[2]),
+                repDiff.rjust(colWidth[3]),
+            )
 
-if len(badStates):
-    # At least one state messed up
-    print('\nInsufficient data:', ', '.join(badStates))
+    if len(badStates):
+        # At least one state messed up
+        print('\nInsufficient data:', ', '.join(badStates))
 
-print()
+    print()
+
+def getData(states, sites):
+    for state in states:
+        if verbose:
+            # Let the user know we're trying:
+            print(' ' + state.abbr + ':', end='', flush=True)
+        state.badData = False
+        
+        for site in sites:
+            if verbose:
+                print('  ' + site.abbr + '..', end='', flush=True)
+            try:
+                response = site.scrape(state)
+                state.chances[site.abbr.lower()] = site.drill(response)
+            except Exception:
+                state.badData = True
+                if verbose:
+                    print('fail!', end='')
+            else:
+                if verbose:
+                    print('good!', end='')
+        
+        if state.badData is True:
+            # If we don't have sufficient data, set fake value:
+            state.difs['max'] = -1
+        else:
+            try:
+                state.calcDifs()
+            except Exception:
+                raise
+        
+        if verbose:
+            # Finish the line for the state:
+            print()
+
+def sortStates(states):
+    """Arrange list for printing."""
+    # Order states by difference, i.e. investment opportunity:
+    states.sort(key=lambda state: state.difs['max'], reverse=True)
+    if best:
+        states = states[:10]
+
+    if sort == 'alpha':
+        # Order states alphabetically (by abbreviation):
+        states.sort(key=lambda state: state.abbr)
+    #elif sort == 'diff':
+    #    # Order states by difference, i.e. investment opportunity:
+    #    states.sort(key=lambda state: state.difs['max'], reverse=True)
+    #else:
+    #    # Default to diff
+    #    states.sort(key=lambda state: state.difs['max'], reverse=True)
+
+    return(states)
+
+def main():
+    """Main program flow."""
+
+    # Create main data structures:
+    states = makeStates()
+    sites = makeSites()
+
+    if verbose:
+        print()
+
+    # Scrape from APIs:
+    getData(states, sites)
+
+    if not verbose:
+        # Still need a blank line before table
+        print()
+
+    states = sortStates(states)
+
+    printHeader()
+    printResults(states)
+
+main()
 
 # Happy trading!
